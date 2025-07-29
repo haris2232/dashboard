@@ -21,6 +21,8 @@ export function OrdersPage() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const { toast } = useToast()
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   useEffect(() => {
     fetchOrders()
@@ -129,7 +131,12 @@ export function OrdersPage() {
 
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
 
-    return matchesSearch && matchesStatus
+    const orderDate = new Date(order.createdAt)
+    const matchesStartDate = !startDate || orderDate >= new Date(startDate)
+    const matchesEndDate =
+      !endDate || orderDate <= new Date(new Date(endDate).setHours(23, 59, 59, 999))
+
+    return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate
   })
 
   if (loading) {
@@ -176,6 +183,24 @@ export function OrdersPage() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex items-center space-x-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-auto"
+            aria-label="Start date"
+          />
+          <span className="text-muted-foreground">-</span>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-auto"
+            aria-label="End date"
+          />
+        </div>
       </div>
 
       <div className="space-y-4">

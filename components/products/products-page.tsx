@@ -136,6 +136,7 @@ export function ProductsPage() {
                     <CardTitle className="text-lg line-clamp-2">{product.title}</CardTitle>
                     <CardDescription className="mt-1">
                       SKU: {product.baseSku} • {product.category}
+                      {product.subCategory && <> • {product.subCategory}</>}
                     </CardDescription>
                   </div>
                   <div className="flex space-x-1 ml-2">

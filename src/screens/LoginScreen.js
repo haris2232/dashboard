@@ -34,7 +34,7 @@ const LoginScreen = () => {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
-          <Title style={[styles.title, { color: theme.colors.primary }]}>eCommerce Admin</Title>
+          <Title style={[styles.title, { color: theme.colors.primary }]}>Athetik Website</Title>
           <Paragraph style={styles.subtitle}>Sign in to manage your store</Paragraph>
 
           <Card style={styles.card}>

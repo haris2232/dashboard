@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "eCommerce Admin Dashboard",
+  title: "Athetik Website",
   description: "Complete admin dashboard for eCommerce management",
     generator: 'v0.dev'
 }

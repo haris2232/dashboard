@@ -42,7 +42,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
   return (
     <div className="bg-white dark:bg-gray-800 w-64 min-h-screen shadow-lg">
       <div className="p-6">
-        <h1 className="text-xl font-bold text-gray-800 dark:text-white">eCommerce Admin</h1>
+        <h1 className="text-xl font-bold text-gray-800 dark:text-white">Athetik Website</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           {user?.name} ({user?.role})
         </p>

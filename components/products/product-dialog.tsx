@@ -331,6 +331,21 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </FormItem>
                   )}
                 />
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Sub-Category</label>
+                  <select
+                    value={form.subCategory || ""}
+                    onChange={e => setForm({ ...form, subCategory: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="">Select sub-category</option>
+                    <option value="T-Shirts">T-Shirts</option>
+                    <option value="Hoodies">Hoodies</option>
+                    <option value="Shorts">Shorts</option>
+                    {/* Add more sub-categories as needed */}
+                  </select>
+                </div>
               </TabsContent>
 
               <TabsContent value="images" className="space-y-6">
