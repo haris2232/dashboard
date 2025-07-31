@@ -1,6 +1,5 @@
 "use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -20,9 +19,10 @@ import { X, Plus, Star, Upload, Palette, ImageIcon, Trash2, MoveUp, MoveDown } f
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  basePrice: z.string().min(1, "Price is required"),
+  basePrice: z.string().min(1, "Price is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Price must be a positive number"),
   baseSku: z.string().min(1, "SKU is required"),
   category: z.string().min(1, "Category is required"),
+  subCategory: z.string().optional(),
   description: z.string().optional(),
   isActive: z.boolean(),
 })
@@ -37,6 +37,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
   const [images, setImages] = useState<string[]>([])
+  const [imageFiles, setImageFiles] = useState<File[]>([])
   const [sizeOptions, setSizeOptions] = useState<string[]>([])
   const [colorOptions, setColorOptions] = useState<
     Array<{
@@ -51,15 +52,25 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [newColorName, setNewColorName] = useState("")
   const [newColorValue, setNewColorValue] = useState("#000000")
   const [colorInputType, setColorInputType] = useState<"hex" | "image">("hex")
+  const [uploadingImages, setUploadingImages] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  // Generate unique SKU
+  const generateUniqueSku = () => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substr(2, 5)
+    return `SKU-${timestamp}-${random}`
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       basePrice: "",
-      baseSku: "",
+      baseSku: `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       category: "",
+      subCategory: "",
       description: "",
       isActive: true,
     },
@@ -72,6 +83,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         basePrice: product.basePrice.toString(),
         baseSku: product.baseSku,
         category: product.category,
+        subCategory: product.subCategory || "",
         description: product.description,
         isActive: product.isActive,
       })
@@ -81,14 +93,23 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       setVariants(product.variants)
       setDefaultVariant(product.defaultVariant || "")
     } else {
-      form.reset()
+      form.reset({
+        title: "",
+        basePrice: "",
+        baseSku: generateUniqueSku(),
+        category: "",
+        subCategory: "",
+        description: "",
+        isActive: true,
+      })
       setImages([])
+      setImageFiles([])
       setSizeOptions([])
       setColorOptions([])
       setVariants([])
       setDefaultVariant("")
     }
-  }, [product, form])
+  }, [product, form, open])
 
   // Generate variants when sizes or colors change
   useEffect(() => {
@@ -102,7 +123,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             newVariants.push(existingVariant)
           } else {
             newVariants.push({
-              id: `${size}-${color.name}-${Date.now()}`,
+              id: `variant-${size}-${color.name}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               size,
               color,
               sku: `${form.getValues("baseSku") || "SKU"}-${size.toUpperCase()}-${color.name.substring(0, 3).toUpperCase()}`,
@@ -117,9 +138,35 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     }
   }, [sizeOptions, colorOptions, form])
 
-  const addImage = () => {
-    const newImageUrl = `/placeholder.svg?height=400&width=400&text=Product+Image+${images.length + 1}`
-    setImages([...images, newImageUrl])
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+
+    try {
+      setUploadingImages(true)
+      
+      // Convert FileList to File array
+      const fileArray = Array.from(files)
+      
+      // Upload images to backend
+      const uploadedUrls = await productAPI.uploadImages(fileArray)
+      
+      // Add new images to state
+      setImages(prev => [...prev, ...uploadedUrls])
+      
+      toast({
+        title: "Success",
+        description: `${files.length} image(s) uploaded successfully`,
+      })
+    } catch (error) {
+      console.error('Error uploading images:', error)
+      toast({
+        title: "Error",
+        description: "Failed to upload images. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingImages(false)
+    }
   }
 
   const removeImage = (index: number) => {
@@ -170,9 +217,41 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     setVariants(variants.map((v) => (v.id === variantId ? { ...v, ...updates } : v)))
   }
 
+  const validateForm = () => {
+    const errors: string[] = []
+
+    // Check required fields
+    if (!form.getValues("title")) errors.push("Product title is required")
+    if (!form.getValues("basePrice")) errors.push("Base price is required")
+    if (!form.getValues("baseSku")) errors.push("Base SKU is required")
+    if (!form.getValues("category")) errors.push("Category is required")
+
+    // Check images
+    if (images.length === 0) errors.push("At least one product image is required")
+
+    // Check size options
+    if (sizeOptions.length === 0) errors.push("Please add at least one size option")
+
+    // Check color options
+    if (colorOptions.length === 0) errors.push("Please add at least one color option")
+
+    return errors
+  }
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true)
+
+      // Validate form
+      const validationErrors = validateForm()
+      if (validationErrors.length > 0) {
+        toast({
+          title: "Validation Error",
+          description: validationErrors.join(", "),
+          variant: "destructive",
+        })
+        return
+      }
 
       const productData = {
         ...values,
@@ -181,11 +260,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         colorOptions,
         variants,
         defaultVariant,
-        images: images.length > 0 ? images : ["/placeholder.svg?height=300&width=300"],
+        images: images.length > 0 ? images : [],
       }
 
       if (product) {
-        await productAPI.updateProduct(product.id, productData)
+        await productAPI.updateProduct(product._id, productData)
         toast({
           title: "Success",
           description: "Product updated successfully",
@@ -199,10 +278,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       }
 
       onClose(true)
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error saving product:', error)
       toast({
         title: "Error",
-        description: "Failed to save product",
+        description: error.message || "Failed to save product",
         variant: "destructive",
       })
     } finally {
@@ -304,6 +384,31 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
                 <FormField
                   control={form.control}
+                  name="subCategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sub-Category</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select sub-category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="T-Shirts">T-Shirts</SelectItem>
+                          <SelectItem value="Hoodies">Hoodies</SelectItem>
+                          <SelectItem value="Shorts">Shorts</SelectItem>
+                          <SelectItem value="Jeans">Jeans</SelectItem>
+                          <SelectItem value="Dresses">Dresses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
@@ -331,21 +436,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </FormItem>
                   )}
                 />
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Sub-Category</label>
-                  <select
-                    value={form.subCategory || ""}
-                    onChange={e => setForm({ ...form, subCategory: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
-                  >
-                    <option value="">Select sub-category</option>
-                    <option value="T-Shirts">T-Shirts</option>
-                    <option value="Hoodies">Hoodies</option>
-                    <option value="Shorts">Shorts</option>
-                    {/* Add more sub-categories as needed */}
-                  </select>
-                </div>
               </TabsContent>
 
               <TabsContent value="images" className="space-y-6">
@@ -360,10 +450,26 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Button type="button" onClick={addImage} className="w-full bg-transparent" variant="outline">
+                    <div className="flex gap-2">
+                      <Button 
+                        type="button" 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="w-full bg-transparent" 
+                        variant="outline"
+                        disabled={uploadingImages}
+                      >
                       <Upload className="h-4 w-4 mr-2" />
-                      Add Image
+                        {uploadingImages ? "Uploading..." : "Select Images"}
                     </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e.target.files)}
+                        className="hidden"
+                      />
+                    </div>
 
                     {images.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -372,7 +478,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             <CardContent className="p-2">
                               <div className="aspect-square relative">
                                 <img
-                                  src={image || "/placeholder.svg"}
+                                  src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
                                   alt={`Product image ${index + 1}`}
                                   className="w-full h-full object-cover rounded-md"
                                 />
@@ -418,7 +524,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
                         <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
                         <p>No images added yet</p>
-                        <p className="text-sm">Click "Add Image" to upload product photos</p>
+                        <p className="text-sm">Click "Select Images" to upload product photos</p>
                       </div>
                     )}
                   </CardContent>
@@ -592,13 +698,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                                     style={{ backgroundColor: variant.color.value }}
                                   />
                                 ) : (
-                                  <img
-                                    src={variant.color.value || "/placeholder.svg"}
-                                    alt={variant.color.name}
-                                    className="w-4 h-4 rounded-full border object-cover"
-                                  />
-                                )}
-                                <span className="text-xs text-muted-foreground">{variant.color.name}</span>
+                                                                  <img
+                                  src={variant.color.value || "/placeholder.svg"}
+                                  alt={variant.color?.name || 'Color'}
+                                  className="w-4 h-4 rounded-full border object-cover"
+                                />
+                              )}
+                              <span className="text-xs text-muted-foreground">{variant.color?.name || 'N/A'}</span>
                               </div>
                             </div>
 

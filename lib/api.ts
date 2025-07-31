@@ -1,4 +1,50 @@
-// Mock API for demo purposes
+// Real API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+// Helper function for API calls
+const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Get auth token from localStorage if available
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+// Helper function for file uploads
+const uploadFiles = async (files: File[], endpoint: string) => {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append('images', file);
+  });
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Upload failed! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 export interface ProductVariant {
   id: string
   size: string
@@ -14,11 +60,12 @@ export interface ProductVariant {
 }
 
 export interface Product {
-  id: string
+  _id: string
   title: string
   basePrice: number
   baseSku: string
   category: string
+  subCategory?: string
   description: string
   images: string[]
   isActive: boolean
@@ -71,6 +118,10 @@ export interface Category {
   description?: string
   image?: string
   isActive: boolean
+  // Carousel display settings
+  showInCarousel?: boolean
+  carouselOrder?: number
+  carouselImage?: string
   createdAt: string
 }
 
@@ -109,10 +160,16 @@ export interface Coupon {
   code: string
   type: "flat" | "percentage"
   value: number
-  usedCount: number
+  minAmount?: number
+  maxDiscount?: number
   usageLimit?: number
-  isActive: boolean
+  usedCount: number
   expiresAt?: string
+  isStackable: boolean
+  applicableProducts?: string[]
+  applicableCategories?: string[]
+  isActive: boolean
+  createdAt: string
 }
 
 export interface User {
@@ -179,10 +236,10 @@ export interface ShippingSettings {
   freeGiftProduct?: string
 }
 
-// Mock data with variants
-let mockProducts: Product[] = [
+// Mock data for fallback
+const mockProducts: Product[] = [
   {
-    id: "1",
+    _id: "1",
     title: "Premium Cotton T-Shirt",
     basePrice: 29.99,
     baseSku: "PCT-001",
@@ -196,7 +253,6 @@ let mockProducts: Product[] = [
       { name: "Black", type: "hex", value: "#000000" },
       { name: "White", type: "hex", value: "#FFFFFF" },
       { name: "Navy", type: "hex", value: "#1e3a8a" },
-      { name: "Denim", type: "image", value: "/placeholder.svg?height=50&width=50&text=Denim" },
     ],
     variants: [
       {
@@ -215,29 +271,11 @@ let mockProducts: Product[] = [
         stock: 25,
         isActive: true,
       },
-      {
-        id: "v3",
-        size: "L",
-        color: { name: "White", type: "hex", value: "#FFFFFF" },
-        sku: "PCT-001-L-WHT",
-        stock: 20,
-        priceOverride: 32.99,
-        isActive: true,
-      },
-      {
-        id: "v4",
-        size: "XL",
-        color: { name: "Denim", type: "image", value: "/placeholder.svg?height=50&width=50&text=Denim" },
-        sku: "PCT-001-XL-DEN",
-        stock: 8,
-        priceOverride: 39.99,
-        isActive: true,
-      },
     ],
     defaultVariant: "v2",
   },
   {
-    id: "2",
+    _id: "2",
     title: "Gaming Mechanical Keyboard",
     basePrice: 149.99,
     baseSku: "GMK-002",
@@ -260,56 +298,751 @@ let mockProducts: Product[] = [
         stock: 12,
         isActive: true,
       },
-      {
-        id: "v6",
-        size: "Full Size",
-        color: { name: "White", type: "hex", value: "#FFFFFF" },
-        sku: "GMK-002-FULL-WHT",
-        stock: 8,
-        priceOverride: 169.99,
-        isActive: true,
-      },
     ],
     defaultVariant: "v5",
   },
-  {
-    id: "3",
-    title: "Ergonomic Office Chair",
-    basePrice: 299.99,
-    baseSku: "EOC-003",
-    category: "Furniture",
-    description: "Comfortable ergonomic chair for long work sessions",
-    images: ["/placeholder.svg?height=300&width=300"],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    sizeOptions: ["Standard"],
-    colorOptions: [
-      { name: "Black Leather", type: "image", value: "/placeholder.svg?height=50&width=50&text=Leather" },
-      { name: "Gray Fabric", type: "image", value: "/placeholder.svg?height=50&width=50&text=Fabric" },
-    ],
-    variants: [
-      {
-        id: "v7",
-        size: "Standard",
-        color: { name: "Black Leather", type: "image", value: "/placeholder.svg?height=50&width=50&text=Leather" },
-        sku: "EOC-003-STD-BLK",
-        stock: 5,
-        isActive: true,
-      },
-      {
-        id: "v8",
-        size: "Standard",
-        color: { name: "Gray Fabric", type: "image", value: "/placeholder.svg?height=50&width=50&text=Fabric" },
-        sku: "EOC-003-STD-GRY",
-        stock: 3,
-        priceOverride: 279.99,
-        isActive: true,
-      },
-    ],
-    defaultVariant: "v7",
-  },
-]
+];
 
+// Product API
+export const productAPI = {
+  getProducts: async (): Promise<Product[]> => {
+    try {
+      const response = await apiCall('/products');
+      // Handle both old mock data structure and new backend structure
+      if (response.data && Array.isArray(response.data)) {
+        return response.data.map((product: any) => ({
+          _id: product._id || product.id,
+          title: product.title,
+          basePrice: product.basePrice,
+          baseSku: product.baseSku,
+          category: product.category,
+          subCategory: product.subCategory,
+          description: product.description,
+          images: product.images || [],
+          isActive: product.isActive,
+          createdAt: product.createdAt,
+          sizeOptions: product.sizeOptions || [],
+          colorOptions: product.colorOptions || [],
+          variants: product.variants || [],
+          defaultVariant: product.defaultVariant
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      // Return mock data if backend is not available
+      return mockProducts;
+    }
+  },
+
+  createProduct: async (productData: Omit<Product, "_id" | "createdAt">): Promise<Product> => {
+    try {
+      const response = await apiCall('/products', {
+        method: 'POST',
+        body: JSON.stringify(productData),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating product:', error);
+      throw error;
+    }
+  },
+
+  updateProduct: async (id: string, productData: Partial<Product>): Promise<Product> => {
+    try {
+      const response = await apiCall(`/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(productData),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating product:', error);
+      throw error;
+    }
+  },
+
+  deleteProduct: async (id: string): Promise<void> => {
+    try {
+      await apiCall(`/products/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
+  },
+
+  uploadImages: async (files: File[]): Promise<string[]> => {
+    try {
+      const response = await uploadFiles(files, '/products/upload-images');
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      throw error;
+    }
+  },
+
+  getProduct: async (id: string): Promise<Product> => {
+    try {
+      const response = await apiCall(`/products/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      throw error;
+    }
+  },
+};
+
+// Order API
+export const orderAPI = {
+  getOrders: async (): Promise<Order[]> => {
+    try {
+      const response = await apiCall('/orders/admin/all');
+      if (response.data && Array.isArray(response.data)) {
+        return response.data.map((order: any) => ({
+          id: order._id,
+          orderNumber: order.orderNumber,
+          customer: {
+            name: order.customer.name,
+            email: order.customer.email,
+          },
+          total: order.total,
+          status: order.status,
+          items: order.items.map((item: any) => ({
+            product: {
+              _id: item.productId,
+              title: item.productName,
+            },
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          trackingNumber: order.trackingNumber,
+          carrier: order.shippingMethod,
+          createdAt: order.createdAt,
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      // Return mock data if backend is not available
+      return mockOrders;
+    }
+  },
+
+  getOrdersByCustomer: async (customerId: string): Promise<Order[]> => {
+    try {
+      const response = await apiCall('/orders/admin/all');
+      if (response.data && Array.isArray(response.data)) {
+        const orders = response.data.filter((order: any) => 
+          order.customer.email.includes(customerId)
+        );
+        return orders.map((order: any) => ({
+          id: order._id,
+          orderNumber: order.orderNumber,
+          customer: {
+            name: order.customer.name,
+            email: order.customer.email,
+          },
+          total: order.total,
+          status: order.status,
+          items: order.items.map((item: any) => ({
+            product: {
+              _id: item.productId,
+              title: item.productName,
+            },
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          trackingNumber: order.trackingNumber,
+          carrier: order.shippingMethod,
+          createdAt: order.createdAt,
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching orders by customer:', error);
+      return mockOrders.filter((order) => order.customer.email.includes(customerId));
+    }
+  },
+
+  updateOrderStatus: async (id: string, status: Order["status"]): Promise<Order> => {
+    try {
+      const response = await apiCall(`/orders/admin/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      // Fallback to mock data
+      const index = mockOrders.findIndex((o) => o.id === id);
+      if (index === -1) throw new Error("Order not found");
+      mockOrders[index].status = status;
+      return mockOrders[index];
+    }
+  },
+
+  assignTracking: async (id: string, trackingNumber: string, carrier: string): Promise<Order> => {
+    try {
+      const response = await apiCall(`/orders/admin/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ 
+          trackingNumber,
+          notes: `Carrier: ${carrier}` 
+        }),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error assigning tracking:', error);
+      // Fallback to mock data
+      const index = mockOrders.findIndex((o) => o.id === id);
+      if (index === -1) throw new Error("Order not found");
+      mockOrders[index].trackingNumber = trackingNumber;
+      mockOrders[index].carrier = carrier;
+      return mockOrders[index];
+    }
+  },
+}
+
+// Customer API
+export const customerAPI = {
+  getCustomers: async (): Promise<Customer[]> => {
+    try {
+      console.log('🔍 Fetching customers from backend...');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      console.log('🔑 Token available:', !!token);
+      
+      const response = await apiCall('/users/admin/all')
+      console.log('📊 Backend response:', response);
+      
+      const customers = response.data.map((user: any) => ({
+        id: user._id,
+        name: user.firstName || user.name || user.email,
+        email: user.email,
+        totalOrders: user.totalOrders || 0,
+        totalSpent: user.totalSpent || 0,
+        isBanned: user.isBanned || false,
+        notes: user.notes || "",
+        createdAt: user.createdAt
+      }));
+      
+      console.log('👥 Mapped customers:', customers);
+      return customers;
+    } catch (error) {
+      console.error('❌ Error fetching customers:', error)
+      console.log('🔄 Falling back to mock data...');
+      // Fallback to mock data
+      return mockCustomers
+    }
+  },
+
+  updateCustomer: async (id: string, customerData: Partial<Customer>): Promise<Customer> => {
+    try {
+      if (customerData.isBanned !== undefined) {
+        const endpoint = customerData.isBanned ? `/users/admin/ban/${id}` : `/users/admin/unban/${id}`
+        const response = await apiCall(endpoint, {
+          method: 'POST',
+          body: JSON.stringify({ reason: customerData.notes || "No reason provided" })
+        })
+        return response.user
+      }
+      
+      // For other updates, use the user profile update endpoint
+      const response = await apiCall(`/users/profile/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(customerData)
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error updating customer:', error)
+      throw error
+    }
+  },
+}
+
+// Dashboard API
+export const dashboardAPI = {
+  getStats: async () => {
+    try {
+      // Get real products from backend
+      const products = await productAPI.getProducts()
+      
+      // Get stats from backend
+      const statsResponse = await apiCall('/products/stats')
+      const stats = statsResponse.data
+      
+      // Calculate total stock from real products
+      const totalStock = products.reduce(
+        (sum: number, product: Product) => sum + product.variants.reduce((variantSum: number, variant: ProductVariant) => variantSum + variant.stock, 0),
+        0,
+      )
+
+      // Get low stock products (stock < 10)
+      const lowStockProducts = products.filter((p: Product) => p.variants.some((v: ProductVariant) => v.stock < 10))
+
+      // Get real orders from backend
+      const ordersResponse = await apiCall('/orders/admin/all').catch(() => ({ data: [] }));
+      const realOrders = ordersResponse.data || [];
+      
+      // Get real customers from backend
+      const customersResponse = await apiCall('/users/admin/all').catch(() => ({ data: [] }));
+      const realCustomers = customersResponse.data || [];
+      
+      return {
+        totalProducts: products.length,
+        totalOrders: realOrders.length,
+        totalCustomers: realCustomers.length, // Now using real customers
+        totalStock,
+        monthlyRevenue: realOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0),
+        recentOrders: realOrders.slice(0, 5).map((order: any) => ({
+          id: order._id,
+          orderNumber: order.orderNumber,
+          customer: {
+            name: order.customer.name,
+            email: order.customer.email,
+          },
+          total: order.total,
+          status: order.status,
+          createdAt: order.createdAt,
+        })),
+        lowStockProducts: lowStockProducts,
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      // Fallback to mock data if backend fails
+      const totalStock = mockProducts.reduce(
+        (sum: number, product: Product) => sum + product.variants.reduce((variantSum: number, variant: ProductVariant) => variantSum + variant.stock, 0),
+        0,
+      )
+
+      // Try to get real orders and customers even in fallback
+      const ordersResponse = await apiCall('/orders/admin/all').catch(() => ({ data: [] }));
+      const realOrders = ordersResponse.data || [];
+      const customersResponse = await apiCall('/users/admin/all').catch(() => ({ data: [] }));
+      const realCustomers = customersResponse.data || [];
+      
+      return {
+        totalProducts: mockProducts.length,
+        totalOrders: realOrders.length || mockOrders.length,
+        totalCustomers: realCustomers.length || mockCustomers.length,
+        totalStock,
+        monthlyRevenue: realOrders.length ? realOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0) : mockOrders.reduce((sum: number, order: Order) => sum + order.total, 0),
+        recentOrders: realOrders.length ? realOrders.slice(0, 5).map((order: any) => ({
+          id: order._id,
+          orderNumber: order.orderNumber,
+          customer: {
+            name: order.customer.name,
+            email: order.customer.email,
+          },
+          total: order.total,
+          status: order.status,
+          createdAt: order.createdAt,
+        })) : mockOrders.slice(0, 5),
+        lowStockProducts: mockProducts.filter((p: Product) => p.variants.some((v: ProductVariant) => v.stock < 10)),
+      }
+    }
+  },
+}
+
+// Category API
+export const categoryAPI = {
+  // Get all categories (admin dashboard)
+  getCategories: async (): Promise<Category[]> => {
+    try {
+      const response = await apiCall('/categories')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      return []
+    }
+  },
+
+  // Get carousel categories (public website)
+  getCarouselCategories: async (): Promise<Category[]> => {
+    try {
+      const response = await apiCall('/categories/public/carousel')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching carousel categories:', error)
+      return []
+    }
+  },
+
+  // Create category
+  createCategory: async (data: Omit<Category, "_id" | "createdAt">): Promise<Category> => {
+    try {
+      const response = await apiCall('/categories', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
+      return response.category
+    } catch (error) {
+      console.error('Error creating category:', error)
+      throw error
+    }
+  },
+
+  // Update category
+  updateCategory: async (id: string, data: Partial<Category>): Promise<Category> => {
+    try {
+      const response = await apiCall(`/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+      return response.category
+    } catch (error) {
+      console.error('Error updating category:', error)
+      throw error
+    }
+  },
+
+  // Delete category
+  deleteCategory: async (id: string): Promise<void> => {
+    try {
+      await apiCall(`/categories/${id}`, {
+        method: 'DELETE'
+      })
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      throw error
+    }
+  },
+
+  // Toggle carousel display
+  toggleCarouselDisplay: async (id: string, data: {
+    showInCarousel: boolean;
+    carouselOrder?: number;
+    carouselImage?: string;
+  }): Promise<Category> => {
+    try {
+      const response = await apiCall(`/categories/${id}/carousel`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+      return response.category
+    } catch (error) {
+      console.error('Error updating carousel display:', error)
+      throw error
+    }
+  },
+
+  // Get category statistics
+  getCategoryStats: async (): Promise<any> => {
+    try {
+      const response = await apiCall('/categories/stats')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching category stats:', error)
+      return { total: 0, active: 0, inCarousel: 0 }
+    }
+  },
+}
+
+// Bundle API
+export const bundleAPI = {
+  getBundles: async (): Promise<{ data: Bundle[] }> => {
+    await delay(500)
+    return { data: mockBundles }
+  },
+  createBundle: async (data: Omit<Bundle, "_id">): Promise<Bundle> => {
+    await delay(1000)
+    const newBundle: Bundle = { ...data, _id: Math.random().toString(36).slice(2) }
+    mockBundles.push(newBundle)
+    return newBundle
+  },
+  updateBundle: async (id: string, data: Partial<Bundle>): Promise<Bundle> => {
+    await delay(1000)
+    const idx = mockBundles.findIndex((b) => b._id === id)
+    if (idx === -1) throw new Error("Bundle not found")
+    mockBundles[idx] = { ...mockBundles[idx], ...data }
+    return mockBundles[idx]
+  },
+  deleteBundle: async (id: string): Promise<void> => {
+    await delay(300)
+    mockBundles = mockBundles.filter((b) => b._id !== id)
+  },
+}
+
+// Coupon API
+export const couponAPI = {
+  // Get all coupons (admin dashboard)
+  getCoupons: async (): Promise<Coupon[]> => {
+    try {
+      const response = await apiCall('/coupons')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching coupons:', error)
+      return []
+    }
+  },
+
+  // Get coupon by ID
+  getCouponById: async (id: string): Promise<Coupon> => {
+    try {
+      const response = await apiCall(`/coupons/${id}`)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching coupon:', error)
+      throw error
+    }
+  },
+
+  // Create coupon
+  createCoupon: async (data: Omit<Coupon, "_id" | "createdAt" | "usedCount">): Promise<Coupon> => {
+    try {
+      const response = await apiCall('/coupons', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error creating coupon:', error)
+      throw error
+    }
+  },
+
+  // Update coupon
+  updateCoupon: async (id: string, data: Partial<Coupon>): Promise<Coupon> => {
+    try {
+      const response = await apiCall(`/coupons/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error updating coupon:', error)
+      throw error
+    }
+  },
+
+  // Delete coupon
+  deleteCoupon: async (id: string): Promise<void> => {
+    try {
+      await apiCall(`/coupons/${id}`, {
+        method: 'DELETE'
+      })
+    } catch (error) {
+      console.error('Error deleting coupon:', error)
+      throw error
+    }
+  },
+
+  // Get coupon statistics
+  getCouponStats: async (): Promise<any> => {
+    try {
+      const response = await apiCall('/coupons/stats')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching coupon stats:', error)
+      return { total: 0, active: 0, expired: 0, totalUsage: 0 }
+    }
+  },
+
+  // Validate coupon (public)
+  validateCoupon: async (code: string, cartTotal: number, items: any[]): Promise<any> => {
+    try {
+      const response = await apiCall('/coupons/validate', {
+        method: 'POST',
+        body: JSON.stringify({ code, cartTotal, items })
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error validating coupon:', error)
+      throw error
+    }
+  },
+
+  // Apply coupon (public)
+  applyCoupon: async (code: string, orderId: string): Promise<any> => {
+    try {
+      const response = await apiCall('/coupons/apply', {
+        method: 'POST',
+        body: JSON.stringify({ code, orderId })
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error applying coupon:', error)
+      throw error
+    }
+  },
+}
+
+// Review API
+export const reviewAPI = {
+  // Get all reviews (admin dashboard)
+  getReviews: async (): Promise<Review[]> => {
+    try {
+      const response = await apiCall('/reviews')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching reviews:', error)
+      return []
+    }
+  },
+
+  // Get approved reviews for public website
+  getPublicReviews: async (productId: string): Promise<Review[]> => {
+    try {
+      const response = await apiCall(`/reviews/public/${productId}`)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching public reviews:', error)
+      return []
+    }
+  },
+
+  // Create new review (customer)
+  createReview: async (reviewData: {
+    productId: string;
+    rating: number;
+    comment: string;
+    customerName: string;
+    customerEmail: string;
+  }): Promise<any> => {
+    try {
+      const response = await apiCall('/reviews/public/create', {
+        method: 'POST',
+        body: JSON.stringify(reviewData)
+      })
+      return response
+    } catch (error) {
+      console.error('Error creating review:', error)
+      throw error
+    }
+  },
+
+  // Approve review (admin)
+  approveReview: async (reviewId: string, adminResponse?: string): Promise<Review> => {
+    try {
+      const response = await apiCall(`/reviews/${reviewId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ adminResponse })
+      })
+      return response.review
+    } catch (error) {
+      console.error('Error approving review:', error)
+      throw error
+    }
+  },
+
+  // Reject review (admin)
+  rejectReview: async (reviewId: string, adminResponse?: string): Promise<Review> => {
+    try {
+      const response = await apiCall(`/reviews/${reviewId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ adminResponse })
+      })
+      return response.review
+    } catch (error) {
+      console.error('Error rejecting review:', error)
+      throw error
+    }
+  },
+
+  // Update review (admin)
+  updateReview: async (id: string, reviewData: Partial<Review>): Promise<Review> => {
+    try {
+      const response = await apiCall(`/reviews/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(reviewData)
+      })
+      return response.review
+    } catch (error) {
+      console.error('Error updating review:', error)
+      throw error
+    }
+  },
+
+  // Get review statistics
+  getReviewStats: async (): Promise<any> => {
+    try {
+      const response = await apiCall('/reviews/stats')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching review stats:', error)
+      return { pending: 0, approved: 0, rejected: 0 }
+    }
+  },
+}
+
+// Settings API
+export const settingsAPI = {
+  getSettings: async (): Promise<{ data: Settings }> => {
+    await delay(400)
+    return { data: mockSettings }
+  },
+  updateSettings: async (formData: FormData): Promise<Settings> => {
+    await delay(800)
+    const settingsData = JSON.parse(formData.get("settingsData") as string)
+    mockSettings = { ...mockSettings, ...settingsData }
+    return mockSettings
+  },
+}
+
+// User API
+export const userAPI = {
+  getUsers: async (): Promise<{ data: User[] }> => {
+    await delay(500)
+    return { data: mockUsers }
+  },
+  createUser: async (data: Omit<User, "_id" | "createdAt">): Promise<User> => {
+    await delay(800)
+    const newUser: User = { ...data, _id: Math.random().toString(36).slice(2), createdAt: new Date().toISOString() }
+    mockUsers.push(newUser)
+    return newUser
+  },
+  updateUser: async (id: string, data: Partial<User>): Promise<User> => {
+    await delay(800)
+    const idx = mockUsers.findIndex((u) => u._id === id)
+    if (idx === -1) throw new Error("User not found")
+    mockUsers[idx] = { ...mockUsers[idx], ...data }
+    return mockUsers[idx]
+  },
+  deleteUser: async (id: string): Promise<void> => {
+    await delay(300)
+    mockUsers = mockUsers.filter((u) => u._id !== id)
+  },
+}
+
+// Shipping API
+export const shippingAPI = {
+  getShippingRules: async (): Promise<{ data: ShippingRule[] }> => {
+    await delay(500)
+    return { data: mockShippingRules }
+  },
+  createShippingRule: async (data: Omit<ShippingRule, "id" | "createdAt">): Promise<ShippingRule> => {
+    await delay(800)
+    const newRule: ShippingRule = {
+      ...data,
+      id: Math.random().toString(36).slice(2),
+      createdAt: new Date().toISOString(),
+    }
+    mockShippingRules.push(newRule)
+    return newRule
+  },
+  updateShippingRule: async (id: string, data: Partial<ShippingRule>): Promise<ShippingRule> => {
+    await delay(800)
+    const idx = mockShippingRules.findIndex((r) => r.id === id)
+    if (idx === -1) throw new Error("Shipping rule not found")
+    mockShippingRules[idx] = { ...mockShippingRules[idx], ...data }
+    return mockShippingRules[idx]
+  },
+  deleteShippingRule: async (id: string): Promise<void> => {
+    await delay(300)
+    mockShippingRules = mockShippingRules.filter((r) => r.id !== id)
+  },
+  getShippingSettings: async (): Promise<{ data: ShippingSettings }> => {
+    await delay(400)
+    return { data: mockShippingSettings }
+  },
+  updateShippingSettings: async (data: Partial<ShippingSettings>): Promise<ShippingSettings> => {
+    await delay(800)
+    mockShippingSettings = { ...mockShippingSettings, ...data }
+    return mockShippingSettings
+  },
+}
+
+// Mock data for other entities (keeping for backward compatibility)
 const mockOrders: Order[] = [
   {
     id: "1",
@@ -319,8 +1052,8 @@ const mockOrders: Order[] = [
     status: "processing",
     items: [
       {
-        product: mockProducts[0],
-        variant: mockProducts[0].variants[0],
+        product: {} as Product,
+        variant: {} as ProductVariant,
         quantity: 2,
         price: 29.99,
       },
@@ -337,8 +1070,8 @@ const mockOrders: Order[] = [
     status: "shipped",
     items: [
       {
-        product: mockProducts[1],
-        variant: mockProducts[1].variants[0],
+        product: {} as Product,
+        variant: {} as ProductVariant,
         quantity: 1,
         price: 149.99,
       },
@@ -371,7 +1104,6 @@ const mockCustomers: Customer[] = [
   },
 ]
 
-// Mock data for other entities
 let mockCategories: Category[] = [
   {
     _id: "1",
@@ -401,7 +1133,7 @@ let mockBundles: Bundle[] = [
     _id: "1",
     name: "Office Starter Pack",
     description: "Everything you need to set up your home office",
-    products: [mockProducts[1], mockProducts[2]],
+    products: [],
     originalPrice: 449.98,
     bundlePrice: 399.99,
     isActive: true,
@@ -411,7 +1143,7 @@ let mockBundles: Bundle[] = [
     _id: "2",
     name: "Gaming Bundle",
     description: "Perfect gaming setup for enthusiasts",
-    products: [mockProducts[1]],
+    products: [],
     originalPrice: 149.99,
     bundlePrice: 129.99,
     isActive: true,
@@ -450,19 +1182,31 @@ let mockCoupons: Coupon[] = [
     code: "WELCOME10",
     type: "percentage",
     value: 10,
+    minAmount: 50,
+    maxDiscount: 25,
     usedCount: 25,
     usageLimit: 100,
     isActive: true,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    isStackable: false,
+    applicableProducts: [],
+    applicableCategories: [],
+    createdAt: new Date().toISOString(),
   },
   {
     _id: "2",
     code: "SAVE20",
     type: "flat",
     value: 20,
+    minAmount: 100,
     usedCount: 5,
     usageLimit: 50,
     isActive: true,
+    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+    isStackable: true,
+    applicableProducts: [],
+    applicableCategories: [],
+    createdAt: new Date().toISOString(),
   },
 ]
 
@@ -562,280 +1306,6 @@ let mockShippingSettings: ShippingSettings = {
 
 // Simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-// Product API
-export const productAPI = {
-  getProducts: async (): Promise<Product[]> => {
-    await delay(500)
-    return mockProducts
-  },
-
-  createProduct: async (productData: Omit<Product, "id" | "createdAt">): Promise<Product> => {
-    await delay(1000)
-    const newProduct: Product = {
-      ...productData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-    }
-    mockProducts.push(newProduct)
-    return newProduct
-  },
-
-  updateProduct: async (id: string, productData: Partial<Product>): Promise<Product> => {
-    await delay(1000)
-    const index = mockProducts.findIndex((p) => p.id === id)
-    if (index === -1) throw new Error("Product not found")
-
-    mockProducts[index] = { ...mockProducts[index], ...productData }
-    return mockProducts[index]
-  },
-
-  deleteProduct: async (id: string): Promise<void> => {
-    await delay(500)
-    mockProducts = mockProducts.filter((p) => p.id !== id)
-  },
-}
-
-// Order API
-export const orderAPI = {
-  getOrders: async (): Promise<Order[]> => {
-    await delay(500)
-    return mockOrders
-  },
-
-  getOrdersByCustomer: async (customerId: string): Promise<Order[]> => {
-    await delay(500)
-    return mockOrders.filter((order) => order.customer.email.includes(customerId))
-  },
-
-  updateOrderStatus: async (id: string, status: Order["status"]): Promise<Order> => {
-    await delay(1000)
-    const index = mockOrders.findIndex((o) => o.id === id)
-    if (index === -1) throw new Error("Order not found")
-
-    mockOrders[index].status = status
-    return mockOrders[index]
-  },
-
-  assignTracking: async (id: string, trackingNumber: string, carrier: string): Promise<Order> => {
-    await delay(1000)
-    const index = mockOrders.findIndex((o) => o.id === id)
-    if (index === -1) throw new Error("Order not found")
-
-    mockOrders[index].trackingNumber = trackingNumber
-    mockOrders[index].carrier = carrier
-    return mockOrders[index]
-  },
-}
-
-// Customer API
-export const customerAPI = {
-  getCustomers: async (): Promise<Customer[]> => {
-    await delay(500)
-    return mockCustomers
-  },
-
-  updateCustomer: async (id: string, customerData: Partial<Customer>): Promise<Customer> => {
-    await delay(1000)
-    const index = mockCustomers.findIndex((c) => c.id === id)
-    if (index === -1) throw new Error("Customer not found")
-
-    mockCustomers[index] = { ...mockCustomers[index], ...customerData }
-    return mockCustomers[index]
-  },
-}
-
-// Dashboard API
-export const dashboardAPI = {
-  getStats: async () => {
-    await delay(500)
-    const totalStock = mockProducts.reduce(
-      (sum, product) => sum + product.variants.reduce((variantSum, variant) => variantSum + variant.stock, 0),
-      0,
-    )
-
-    return {
-      totalProducts: mockProducts.length,
-      totalOrders: mockOrders.length,
-      totalCustomers: mockCustomers.length,
-      totalStock,
-      monthlyRevenue: mockOrders.reduce((sum, order) => sum + order.total, 0),
-      recentOrders: mockOrders.slice(0, 5),
-      lowStockProducts: mockProducts.filter((p) => p.variants.some((v) => v.stock < 10)),
-    }
-  },
-}
-
-// Category API
-export const categoryAPI = {
-  getCategories: async (): Promise<{ data: Category[] }> => {
-    await delay(500)
-    return { data: mockCategories }
-  },
-  createCategory: async (data: Omit<Category, "_id" | "createdAt">): Promise<Category> => {
-    await delay(500)
-    const newCategory: Category = {
-      ...data,
-      _id: Math.random().toString(36).slice(2),
-      createdAt: new Date().toISOString(),
-    }
-    mockCategories.push(newCategory)
-    return newCategory
-  },
-  updateCategory: async (id: string, data: Partial<Category>): Promise<Category> => {
-    await delay(500)
-    const idx = mockCategories.findIndex((c) => c._id === id)
-    if (idx === -1) throw new Error("Category not found")
-    mockCategories[idx] = { ...mockCategories[idx], ...data }
-    return mockCategories[idx]
-  },
-  deleteCategory: async (id: string): Promise<void> => {
-    await delay(300)
-    mockCategories = mockCategories.filter((c) => c._id !== id)
-  },
-}
-
-// Bundle API
-export const bundleAPI = {
-  getBundles: async (): Promise<{ data: Bundle[] }> => {
-    await delay(500)
-    return { data: mockBundles }
-  },
-  createBundle: async (data: Omit<Bundle, "_id">): Promise<Bundle> => {
-    await delay(1000)
-    const newBundle: Bundle = { ...data, _id: Math.random().toString(36).slice(2) }
-    mockBundles.push(newBundle)
-    return newBundle
-  },
-  updateBundle: async (id: string, data: Partial<Bundle>): Promise<Bundle> => {
-    await delay(1000)
-    const idx = mockBundles.findIndex((b) => b._id === id)
-    if (idx === -1) throw new Error("Bundle not found")
-    mockBundles[idx] = { ...mockBundles[idx], ...data }
-    return mockBundles[idx]
-  },
-  deleteBundle: async (id: string): Promise<void> => {
-    await delay(300)
-    mockBundles = mockBundles.filter((b) => b._id !== id)
-  },
-}
-
-// Coupon API
-export const couponAPI = {
-  getCoupons: async (): Promise<{ data: Coupon[] }> => {
-    await delay(500)
-    return { data: mockCoupons }
-  },
-  createCoupon: async (data: Omit<Coupon, "_id">): Promise<Coupon> => {
-    await delay(500)
-    const newCoupon: Coupon = { ...data, _id: Math.random().toString(36).slice(2) }
-    mockCoupons.push(newCoupon)
-    return newCoupon
-  },
-  updateCoupon: async (id: string, data: Partial<Coupon>): Promise<Coupon> => {
-    await delay(500)
-    const idx = mockCoupons.findIndex((c) => c._id === id)
-    if (idx === -1) throw new Error("Coupon not found")
-    mockCoupons[idx] = { ...mockCoupons[idx], ...data }
-    return mockCoupons[idx]
-  },
-  deleteCoupon: async (id: string): Promise<void> => {
-    await delay(300)
-    mockCoupons = mockCoupons.filter((c) => c._id !== id)
-  },
-}
-
-// Review API
-export const reviewAPI = {
-  getReviews: async (): Promise<{ data: Review[] }> => {
-    await delay(500)
-    return { data: mockReviews }
-  },
-  updateReview: async (id: string, data: Partial<Review>): Promise<Review> => {
-    await delay(500)
-    const idx = mockReviews.findIndex((r) => r.id === id)
-    if (idx === -1) throw new Error("Review not found")
-    mockReviews[idx] = { ...mockReviews[idx], ...data }
-    return mockReviews[idx]
-  },
-}
-
-// Settings API
-export const settingsAPI = {
-  getSettings: async (): Promise<{ data: Settings }> => {
-    await delay(400)
-    return { data: mockSettings }
-  },
-  updateSettings: async (formData: FormData): Promise<Settings> => {
-    await delay(800)
-    const settingsData = JSON.parse(formData.get("settingsData") as string)
-    mockSettings = { ...mockSettings, ...settingsData }
-    return mockSettings
-  },
-}
-
-// User API
-export const userAPI = {
-  getUsers: async (): Promise<{ data: User[] }> => {
-    await delay(500)
-    return { data: mockUsers }
-  },
-  createUser: async (data: Omit<User, "_id" | "createdAt">): Promise<User> => {
-    await delay(800)
-    const newUser: User = { ...data, _id: Math.random().toString(36).slice(2), createdAt: new Date().toISOString() }
-    mockUsers.push(newUser)
-    return newUser
-  },
-  updateUser: async (id: string, data: Partial<User>): Promise<User> => {
-    await delay(800)
-    const idx = mockUsers.findIndex((u) => u._id === id)
-    if (idx === -1) throw new Error("User not found")
-    mockUsers[idx] = { ...mockUsers[idx], ...data }
-    return mockUsers[idx]
-  },
-  deleteUser: async (id: string): Promise<void> => {
-    await delay(300)
-    mockUsers = mockUsers.filter((u) => u._id !== id)
-  },
-}
-
-// Shipping API
-export const shippingAPI = {
-  getShippingRules: async (): Promise<{ data: ShippingRule[] }> => {
-    await delay(500)
-    return { data: mockShippingRules }
-  },
-  createShippingRule: async (data: Omit<ShippingRule, "id" | "createdAt">): Promise<ShippingRule> => {
-    await delay(800)
-    const newRule: ShippingRule = {
-      ...data,
-      id: Math.random().toString(36).slice(2),
-      createdAt: new Date().toISOString(),
-    }
-    mockShippingRules.push(newRule)
-    return newRule
-  },
-  updateShippingRule: async (id: string, data: Partial<ShippingRule>): Promise<ShippingRule> => {
-    await delay(800)
-    const idx = mockShippingRules.findIndex((r) => r.id === id)
-    if (idx === -1) throw new Error("Shipping rule not found")
-    mockShippingRules[idx] = { ...mockShippingRules[idx], ...data }
-    return mockShippingRules[idx]
-  },
-  deleteShippingRule: async (id: string): Promise<void> => {
-    await delay(300)
-    mockShippingRules = mockShippingRules.filter((r) => r.id !== id)
-  },
-  getShippingSettings: async (): Promise<{ data: ShippingSettings }> => {
-    await delay(400)
-    return { data: mockShippingSettings }
-  },
-  updateShippingSettings: async (data: Partial<ShippingSettings>): Promise<ShippingSettings> => {
-    await delay(800)
-    mockShippingSettings = { ...mockShippingSettings, ...data }
-    return mockShippingSettings
-  },
-}
 
 // Utility function for formatting
 export const formatCurrency = (amount: number): string => {

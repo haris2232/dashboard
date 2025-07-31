@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { categoryAPI } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
-import { Plus, Search, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Eye, EyeOff } from "lucide-react"
 import { subCategoryAPI } from "@/lib/subCategoryAPI"
 import { SubCategory } from "@/types/sub-category"
+import { CategoryDialog } from "./category-dialog"
 
 interface Category {
   _id: string
@@ -18,6 +19,9 @@ interface Category {
   description?: string
   image?: string
   isActive: boolean
+  showInCarousel?: boolean
+  carouselOrder?: number
+  carouselImage?: string
   createdAt: string
 }
 
@@ -31,6 +35,8 @@ export function CategoriesPage() {
   const [editing, setEditing] = useState<SubCategory | null>(null)
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -40,8 +46,8 @@ export function CategoriesPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await categoryAPI.getCategories()
-      setCategories(response.data)
+      const categories = await categoryAPI.getCategories()
+      setCategories(categories)
     } catch (error) {
       toast({
         title: "Error",
@@ -83,6 +89,45 @@ export function CategoriesPage() {
     }
   }
 
+  const toggleCarouselDisplay = async (categoryId: string, showInCarousel: boolean) => {
+    try {
+      await categoryAPI.toggleCarouselDisplay(categoryId, {
+        showInCarousel,
+        carouselOrder: showInCarousel ? (categories.length + 1) : 0
+      })
+      toast({
+        title: "Success",
+        description: `Category ${showInCarousel ? 'added to' : 'removed from'} carousel`,
+      })
+      fetchCategories()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update carousel display",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (confirm("Are you sure you want to delete this category?")) {
+      try {
+        await categoryAPI.deleteCategory(categoryId)
+        toast({
+          title: "Success",
+          description: "Category deleted successfully",
+        })
+        fetchCategories()
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete category",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
   const filteredCategories = categories.filter((category) =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
@@ -102,7 +147,10 @@ export function CategoriesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
           <p className="text-muted-foreground">Organize your products into categories.</p>
         </div>
-        <Button>
+        <Button onClick={() => {
+          setSelectedCategory(null)
+          setDialogOpen(true)
+        }}>
           <Plus className="mr-2 h-4 w-4" />
           Add Category
         </Button>
@@ -130,21 +178,65 @@ export function CategoriesPage() {
                   {category.description && <CardDescription>{category.description}</CardDescription>}
                 </div>
                 <div className="flex space-x-1">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => toggleCarouselDisplay(category._id, !category.showInCarousel)}
+                    title={category.showInCarousel ? "Hide from carousel" : "Show in carousel"}
+                  >
+                    {category.showInCarousel ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedCategory(category)
+                      setDialogOpen(true)
+                    }}
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDeleteCategory(category._id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <Badge variant={category.isActive ? "default" : "secondary"}>
-                  {category.isActive ? "Active" : "Inactive"}
-                </Badge>
+              {/* Category Image */}
+              {category.image && (
+                <div className="mb-4">
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  <Badge variant={category.isActive ? "default" : "secondary"}>
+                    {category.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Carousel:</span>
+                  <Badge variant={category.showInCarousel ? "default" : "secondary"}>
+                    {category.showInCarousel ? "Shown" : "Hidden"}
+                  </Badge>
+                </div>
+                {category.showInCarousel && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Order:</span>
+                    <span className="text-sm font-medium">{category.carouselOrder || 0}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -207,6 +299,14 @@ export function CategoriesPage() {
           ))}
         </ul>
       </div>
+
+      {/* Category Dialog */}
+      <CategoryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        category={selectedCategory}
+        onSuccess={fetchCategories}
+      />
     </div>
   )
 }

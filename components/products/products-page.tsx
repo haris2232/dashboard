@@ -48,10 +48,10 @@ export function ProductsPage() {
         description: "Product deleted successfully",
       })
       fetchProducts()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to delete product",
+        description: error.message || "Failed to delete product",
         variant: "destructive",
       })
     }
@@ -129,7 +129,7 @@ export function ProductsPage() {
           const finalPrice = defaultVariant?.priceOverride || product.basePrice
 
           return (
-            <Card key={product.id} className="hover:shadow-lg transition-shadow">
+            <Card key={product._id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -143,7 +143,7 @@ export function ProductsPage() {
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(product)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(product.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(product._id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -199,7 +199,7 @@ export function ProductsPage() {
                               />
                             ) : (
                               <img
-                                src={color.value || "/placeholder.svg"}
+                                src={color.value.startsWith('http') ? color.value : `http://localhost:5000${color.value}`}
                                 alt={color.name}
                                 className="w-4 h-4 rounded-full border border-gray-300 object-cover"
                                 title={color.name}
@@ -220,7 +220,7 @@ export function ProductsPage() {
                   {defaultVariant && (
                     <div className="flex items-center text-xs text-muted-foreground">
                       <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
-                      Default: {defaultVariant.size} / {defaultVariant.color.name}
+                      Default: {defaultVariant.size} / {defaultVariant.color?.name || 'N/A'}
                     </div>
                   )}
                 </div>

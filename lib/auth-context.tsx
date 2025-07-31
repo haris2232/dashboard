@@ -47,34 +47,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Call real backend API
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const expectedPassword = mockCredentials[email as keyof typeof mockCredentials]
+      const data = await response.json();
 
-    if (!expectedPassword || expectedPassword !== password) {
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password",
-        variant: "destructive",
-      })
-      throw new Error("Invalid credentials")
-    }
+      if (!response.ok) {
+        toast({
+          title: "Login Failed",
+          description: data.message || "Invalid email or password",
+          variant: "destructive",
+        });
+        throw new Error(data.message || "Invalid credentials");
+      }
 
-    const user = mockUsers.find((u) => u.email === email)
-    if (user) {
-      setUser(user)
-      localStorage.setItem("user", JSON.stringify(user))
+      // Store token and user data
+      const user = {
+        id: data.user._id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+      };
+
+      setUser(user);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", data.token);
+      
       toast({
         title: "Welcome!",
         description: `Logged in as ${user.name}`,
-      })
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
   }
 
   const logout = () => {
     setUser(null)
     localStorage.removeItem("user")
+    localStorage.removeItem("token")
     toast({
       title: "Logged out",
       description: "You have been successfully logged out",

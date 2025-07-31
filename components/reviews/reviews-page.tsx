@@ -29,9 +29,11 @@ export function ReviewsPage() {
 
   const fetchReviews = async () => {
     try {
-      const response = await reviewAPI.getReviews()
-      setReviews(response.data)
+      const reviews = await reviewAPI.getReviews()
+      console.log('📊 Fetched reviews:', reviews)
+      setReviews(reviews)
     } catch (error) {
+      console.error('❌ Error fetching reviews:', error)
       toast({
         title: "Error",
         description: "Failed to fetch reviews",
@@ -42,18 +44,43 @@ export function ReviewsPage() {
     }
   }
 
-  const updateReviewStatus = async (reviewId: string, status: "approved" | "rejected") => {
+  const approveReview = async (reviewId: string) => {
     try {
-      await reviewAPI.updateReview(reviewId, { status })
+      console.log('🔍 Approving review with ID:', reviewId)
+      await reviewAPI.approveReview(reviewId, response)
       toast({
         title: "Success",
-        description: `Review ${status} successfully`,
+        description: "Review approved successfully",
       })
+      setResponseOpen(false)
+      setResponse("")
       fetchReviews()
     } catch (error) {
+      console.error('❌ Error approving review:', error)
       toast({
         title: "Error",
-        description: "Failed to update review status",
+        description: "Failed to approve review",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const rejectReview = async (reviewId: string) => {
+    try {
+      console.log('🔍 Rejecting review with ID:', reviewId)
+      await reviewAPI.rejectReview(reviewId, response)
+      toast({
+        title: "Success",
+        description: "Review rejected successfully",
+      })
+      setResponseOpen(false)
+      setResponse("")
+      fetchReviews()
+    } catch (error) {
+      console.error('❌ Error rejecting review:', error)
+      toast({
+        title: "Error",
+        description: "Failed to reject review",
         variant: "destructive",
       })
     }
@@ -63,7 +90,7 @@ export function ReviewsPage() {
     if (!selectedReview || !response.trim()) return
 
     try {
-      await reviewAPI.updateReview(selectedReview.id, {
+      await reviewAPI.updateReview(selectedReview._id, {
         adminResponse: response,
         responseDate: new Date().toISOString(),
       })
@@ -155,9 +182,9 @@ export function ReviewsPage() {
         </Select>
       </div>
 
-      <div className="space-y-4">
-        {filteredReviews.map((review) => (
-          <Card key={review.id}>
+             <div className="space-y-4">
+         {filteredReviews.map((review) => (
+           <Card key={review._id}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
@@ -198,11 +225,19 @@ export function ReviewsPage() {
                 <div className="flex space-x-2">
                   {review.status === "pending" && (
                     <>
-                      <Button size="sm" onClick={() => updateReviewStatus(review.id, "approved")}>
+                      <Button size="sm" onClick={() => {
+                        setSelectedReview(review)
+                        setResponse("")
+                        setResponseOpen(true)
+                      }}>
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Approve
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => updateReviewStatus(review.id, "rejected")}>
+                      <Button size="sm" variant="destructive" onClick={() => {
+                        setSelectedReview(review)
+                        setResponse("")
+                        setResponseOpen(true)
+                      }}>
                         <X className="h-4 w-4 mr-1" />
                         Reject
                       </Button>
@@ -273,9 +308,30 @@ export function ReviewsPage() {
                 <Button variant="outline" onClick={() => setResponseOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={submitResponse} disabled={!response.trim()}>
-                  Submit Response
-                </Button>
+                                 {selectedReview?.status === "pending" ? (
+                   <>
+                     <Button 
+                       onClick={() => approveReview(selectedReview._id)} 
+                       disabled={!response.trim()}
+                       className="bg-green-600 hover:bg-green-700"
+                     >
+                       <CheckCircle className="h-4 w-4 mr-1" />
+                       Approve
+                     </Button>
+                     <Button 
+                       onClick={() => rejectReview(selectedReview._id)} 
+                       disabled={!response.trim()}
+                       variant="destructive"
+                     >
+                       <X className="h-4 w-4 mr-1" />
+                       Reject
+                     </Button>
+                   </>
+                 ) : (
+                   <Button onClick={submitResponse} disabled={!response.trim()}>
+                     Submit Response
+                   </Button>
+                 )}
               </div>
             </div>
           )}

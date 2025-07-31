@@ -160,12 +160,12 @@ export function DashboardOverview() {
                           ) : (
                             <img
                               src={variant.color.value || "/placeholder.svg"}
-                              alt={variant.color.name}
+                              alt={variant.color?.name || 'Color'}
                               className="w-3 h-3 rounded-full border object-cover"
                             />
                           )}
                           <span className="text-xs text-muted-foreground">
-                            {variant.size} / {variant.color.name}
+                            {variant.size} / {variant.color?.name || 'N/A'}
                           </span>
                         </div>
                         <Badge variant="destructive" className="text-xs">

@@ -372,7 +372,7 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                       <div className="font-medium">{item.product.title}</div>
                       {item.variant && (
                         <div className="text-sm text-muted-foreground">
-                          {item.variant.size} / {item.variant.color.name}
+                          {item.variant.size} / {item.variant.color?.name || 'N/A'}
                         </div>
                       )}
                       <div className="text-sm text-muted-foreground">
