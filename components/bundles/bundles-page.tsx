@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Checkbox } from "@/components/ui/checkbox"
 import { bundleAPI, productAPI, type Bundle, type Product } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-import { formatCurrency, formatDate } from "@/lib/api"
+import { formatCurrency, formatDate } from "@/lib/utils"
 import { Plus, Edit, Trash2, Package, DollarSign, Calendar, Percent } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 

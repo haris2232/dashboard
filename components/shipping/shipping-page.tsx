@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Edit, Trash2, Truck } from "lucide-react"
 import { shippingAPI } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
-import ShippingRuleDialog from "./shipping-rule-dialog"
+import { useToast } from "@/components/ui/use-toast"
+import { ShippingRuleDialog } from "./shipping-rule-dialog"
 
 interface ShippingRule {
   _id: string
@@ -26,7 +26,7 @@ interface ShippingRule {
   createdAt: string
 }
 
-export default function ShippingPage() {
+export function ShippingPage() {
   const [rules, setRules] = useState<ShippingRule[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)

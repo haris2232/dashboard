@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { shippingAPI } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 const shippingRuleSchema = z.object({
   name: z.string().min(1, "Rule name is required"),
@@ -49,7 +49,7 @@ interface ShippingRuleDialogProps {
   rule: ShippingRule | null
 }
 
-export default function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRuleDialogProps) {
+export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRuleDialogProps) {
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
