@@ -1,27 +1,80 @@
 import { SubCategory } from "@/types/sub-category"
 
+// Helper function for API calls
+const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Get auth token from localStorage if available
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 export const subCategoryAPI = {
   async getAll(): Promise<SubCategory[]> {
-    const res = await fetch("/api/sub-categories")
-    return res.json()
+    try {
+      const response = await apiCall('/categories');
+      // Transform the response to match SubCategory interface
+      return response.data.map((category: any) => ({
+        id: category._id,
+        name: category.name,
+        description: category.description || '',
+        image: category.image || '',
+        isActive: category.isActive,
+        createdAt: category.createdAt
+      }));
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
   },
+  
   async create(data: Omit<SubCategory, "id">): Promise<SubCategory> {
-    const res = await fetch("/api/sub-categories", {
+    const response = await apiCall('/categories', {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    })
-    return res.json()
+    });
+    return {
+      id: response.data._id,
+      name: response.data.name,
+      description: response.data.description || '',
+      image: response.data.image || '',
+      isActive: response.data.isActive,
+      createdAt: response.data.createdAt
+    };
   },
+  
   async update(id: string, data: Omit<SubCategory, "id">): Promise<SubCategory> {
-    const res = await fetch(`/api/sub-categories/${id}`, {
+    const response = await apiCall(`/categories/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    })
-    return res.json()
+    });
+    return {
+      id: response.data._id,
+      name: response.data.name,
+      description: response.data.description || '',
+      image: response.data.image || '',
+      isActive: response.data.isActive,
+      createdAt: response.data.createdAt
+    };
   },
+  
   async delete(id: string): Promise<void> {
-    await fetch(`/api/sub-categories/${id}`, { method: "DELETE" })
+    await apiCall(`/categories/${id}`, { method: "DELETE" });
   },
 }

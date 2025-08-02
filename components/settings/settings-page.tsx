@@ -126,8 +126,8 @@ export function SettingsPage() {
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="shipping">Shipping</TabsTrigger>
-          <TabsTrigger value="modules">Modules</TabsTrigger>
+          {/* <TabsTrigger value="shipping">Shipping</TabsTrigger>
+          <TabsTrigger value="modules">Modules</TabsTrigger> */}
         </TabsList>
 
         <Form {...form}>
@@ -186,7 +186,7 @@ export function SettingsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="shipping" className="space-y-4">
+            {/* <TabsContent value="shipping" className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Shipping Settings</CardTitle>
@@ -268,7 +268,7 @@ export function SettingsPage() {
                   />
                 </CardContent>
               </Card>
-            </TabsContent>
+            </TabsContent> */}
 
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>

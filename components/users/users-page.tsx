@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { userAPI } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Edit, Trash2 } from "lucide-react"
+import { UserDialog } from "./user-dialog"
 
 interface User {
   _id: string
@@ -24,6 +25,8 @@ export function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -58,6 +61,25 @@ export function UsersPage() {
     }
   }
 
+  const handleDeleteUser = async (userId: string) => {
+    if (confirm("Are you sure you want to delete this user?")) {
+      try {
+        await userAPI.deleteUser(userId)
+        toast({
+          title: "Success",
+          description: "User deleted successfully",
+        })
+        fetchUsers()
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete user",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
   const filteredUsers = users.filter(
     (user) =>
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -79,7 +101,10 @@ export function UsersPage() {
           <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
           <p className="text-muted-foreground">Manage admin users and their permissions.</p>
         </div>
-        <Button>
+        <Button onClick={() => {
+          setSelectedUser(null)
+          setDialogOpen(true)
+        }}>
           <Plus className="mr-2 h-4 w-4" />
           Add User
         </Button>
@@ -101,13 +126,34 @@ export function UsersPage() {
         {filteredUsers.map((user) => (
           <Card key={user._id}>
             <CardHeader>
-              <div className="flex items-center space-x-4">
-                <Avatar>
-                  <AvatarFallback>{user.name?.charAt(0) || user.email.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle className="text-lg">{user.name || "No Name"}</CardTitle>
-                  <CardDescription>{user.email}</CardDescription>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-4">
+                  <Avatar>
+                    <AvatarFallback>{user.name?.charAt(0) || user.email.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <CardTitle className="text-lg">{user.name || "No Name"}</CardTitle>
+                    <CardDescription>{user.email}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedUser(user)
+                      setDialogOpen(true)
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDeleteUser(user._id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -132,6 +178,14 @@ export function UsersPage() {
           </Card>
         ))}
       </div>
+
+      {/* User Dialog */}
+      <UserDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        user={selectedUser}
+        onSuccess={fetchUsers}
+      />
     </div>
   )
 }

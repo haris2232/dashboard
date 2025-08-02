@@ -23,6 +23,7 @@ const formSchema = z.object({
   baseSku: z.string().min(1, "SKU is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().optional(),
+  collectionType: z.enum(["men", "women", "train", "general"]).optional(),
   description: z.string().optional(),
   isActive: z.boolean(),
 })
@@ -71,6 +72,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       baseSku: `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       category: "",
       subCategory: "",
+      collectionType: "general",
       description: "",
       isActive: true,
     },
@@ -84,6 +86,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         baseSku: product.baseSku,
         category: product.category,
         subCategory: product.subCategory || "",
+        collectionType: product.collectionType || "general",
         description: product.description,
         isActive: product.isActive,
       })
@@ -99,6 +102,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         baseSku: generateUniqueSku(),
         category: "",
         subCategory: "",
+        collectionType: "general",
         description: "",
         isActive: true,
       })
@@ -400,6 +404,30 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           <SelectItem value="Shorts">Shorts</SelectItem>
                           <SelectItem value="Jeans">Jeans</SelectItem>
                           <SelectItem value="Dresses">Dresses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="collectionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Collection Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select collection type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="men">Men Collection</SelectItem>
+                          <SelectItem value="women">Women Collection</SelectItem>
+                          <SelectItem value="train">Train Collection</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

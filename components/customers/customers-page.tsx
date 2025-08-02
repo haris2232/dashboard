@@ -1,26 +1,32 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { customerAPI, orderAPI, type Customer, type Order } from "@/lib/api"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { customerAPI } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
-import { Search, Users, Mail, ShoppingBag, Eye, MessageSquare, Ban, CheckCircle } from "lucide-react"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { Search, Edit, Trash2, Ban, UserCheck } from "lucide-react"
+
+interface Customer {
+  _id: string
+  name: string
+  email: string
+  totalOrders: number
+  totalSpent: number
+  isActive: boolean
+  isBanned: boolean
+  isEmailVerified: boolean
+  createdAt: string
+}
 
 export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [customerOrders, setCustomerOrders] = useState<Order[]>([])
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [notes, setNotes] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -29,8 +35,8 @@ export function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const data = await customerAPI.getCustomers()
-      setCustomers(data)
+      const response = await customerAPI.getCustomers()
+      setCustomers(response.data)
     } catch (error) {
       toast({
         title: "Error",
@@ -42,79 +48,94 @@ export function CustomersPage() {
     }
   }
 
-  const fetchCustomerOrders = async (customerId: string) => {
-    try {
-      const orders = await orderAPI.getOrdersByCustomer(customerId)
-      setCustomerOrders(orders)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch customer orders",
-        variant: "destructive",
-      })
+  const handleBanCustomer = async (customerId: string) => {
+    if (confirm("Are you sure you want to ban this customer?")) {
+      try {
+        await customerAPI.banCustomer(customerId)
+        toast({
+          title: "Success",
+          description: "Customer banned successfully",
+        })
+        fetchCustomers()
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to ban customer",
+          variant: "destructive",
+        })
+      }
     }
   }
 
-  const toggleCustomerStatus = async (customerId: string, isBanned: boolean) => {
+  const handleUnbanCustomer = async (customerId: string) => {
     try {
-      await customerAPI.updateCustomer(customerId, { isBanned: !isBanned })
+      await customerAPI.unbanCustomer(customerId)
       toast({
         title: "Success",
-        description: `Customer ${!isBanned ? "banned" : "unbanned"} successfully`,
+        description: "Customer unbanned successfully",
       })
       fetchCustomers()
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update customer status",
+        description: "Failed to unban customer",
         variant: "destructive",
       })
     }
   }
 
-  const saveCustomerNotes = async (customerId: string, notes: string) => {
-    try {
-      await customerAPI.updateCustomer(customerId, { notes })
-      toast({
-        title: "Success",
-        description: "Customer notes saved successfully",
-      })
-      fetchCustomers()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save customer notes",
-        variant: "destructive",
-      })
+  const handleDeleteCustomer = async (customerId: string) => {
+    if (confirm("Are you sure you want to delete this customer?")) {
+      try {
+        await customerAPI.deleteCustomer(customerId)
+        toast({
+          title: "Success",
+          description: "Customer deleted successfully",
+        })
+        fetchCustomers()
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete customer",
+          variant: "destructive",
+        })
+      }
     }
   }
 
-  const viewCustomerProfile = async (customer: Customer) => {
-    setSelectedCustomer(customer)
-    setNotes(customer.notes || "")
-    await fetchCustomerOrders(customer.id)
-    setProfileOpen(true)
+  const getStatusColor = (customer: Customer) => {
+    if (customer.isBanned) return "destructive"
+    if (!customer.isActive) return "secondary"
+    return "default"
+  }
+
+  const getStatusText = (customer: Customer) => {
+    if (customer.isBanned) return "Banned"
+    if (!customer.isActive) return "Inactive"
+    return "Active"
   }
 
   const filteredCustomers = customers.filter(
     (customer) =>
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner />
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
-        <p className="text-muted-foreground">View and manage your customer base.</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Customer Management</h1>
+          <p className="text-muted-foreground">Manage website signups and customer accounts.</p>
+        </div>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -131,196 +152,80 @@ export function CustomersPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className="hover:shadow-lg transition-shadow">
+          <Card key={customer._id}>
             <CardHeader>
               <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-medium">{customer.name.charAt(0).toUpperCase()}</span>
-                  </div>
+                <div className="flex items-center space-x-4">
+                  <Avatar>
+                    <AvatarFallback>{customer.name?.charAt(0) || customer.email.charAt(0)}</AvatarFallback>
+                  </Avatar>
                   <div>
-                    <CardTitle className="text-lg">{customer.name}</CardTitle>
-                    <CardDescription className="flex items-center">
-                      <Mail className="h-3 w-3 mr-1" />
-                      {customer.email}
-                    </CardDescription>
+                    <CardTitle className="text-lg">{customer.name || "No Name"}</CardTitle>
+                    <CardDescription>{customer.email}</CardDescription>
                   </div>
                 </div>
-                <Badge variant={customer.isBanned ? "destructive" : "default"}>
-                  {customer.isBanned ? "Banned" : "Active"}
-                </Badge>
+                <div className="flex space-x-1">
+                  {customer.isBanned ? (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleUnbanCustomer(customer._id)}
+                      title="Unban customer"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleBanCustomer(customer._id)}
+                      title="Ban customer"
+                    >
+                      <Ban className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDeleteCustomer(customer._id)}
+                    title="Delete customer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center">
-                    <ShoppingBag className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <span className="text-muted-foreground">Orders:</span>
-                    <span className="ml-auto font-medium">{customer.totalOrders}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-muted-foreground">Spent:</span>
-                    <span className="ml-auto font-medium">{formatCurrency(customer.totalSpent)}</span>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  <Badge variant={getStatusColor(customer)}>
+                    {getStatusText(customer)}
+                  </Badge>
                 </div>
-
-                <div className="text-xs text-muted-foreground">Joined: {formatDate(customer.createdAt)}</div>
-
-                {customer.notes && (
-                  <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                    <MessageSquare className="h-3 w-3 inline mr-1" />
-                    {customer.notes.substring(0, 50)}...
-                  </div>
-                )}
-
-                <div className="flex space-x-2">
-                  <Button
-                    variant={customer.isBanned ? "default" : "destructive"}
-                    size="sm"
-                    onClick={() => toggleCustomerStatus(customer.id, customer.isBanned)}
-                    className="flex-1"
-                  >
-                    {customer.isBanned ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Unban
-                      </>
-                    ) : (
-                      <>
-                        <Ban className="h-3 w-3 mr-1" />
-                        Ban
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-transparent"
-                    onClick={() => viewCustomerProfile(customer)}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    Profile
-                  </Button>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Orders:</span>
+                  <span className="font-medium">{customer.totalOrders}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Total Spent:</span>
+                  <span className="font-medium">${customer.totalSpent?.toFixed(2) || "0.00"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Email Verified:</span>
+                  <Badge variant={customer.isEmailVerified ? "default" : "secondary"}>
+                    {customer.isEmailVerified ? "Yes" : "No"}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Joined:</span>
+                  <span className="text-sm">{new Date(customer.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      {filteredCustomers.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
-          <p className="text-gray-500">
-            {searchQuery ? "Try adjusting your search terms" : "Customers will appear here when they register"}
-          </p>
-        </div>
-      )}
-
-      {/* Customer Profile Dialog */}
-      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Customer Profile - {selectedCustomer?.name}</DialogTitle>
-          </DialogHeader>
-
-          {selectedCustomer && (
-            <div className="space-y-6">
-              {/* Customer Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Information</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Name</label>
-                    <div className="text-lg">{selectedCustomer.name}</div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Email</label>
-                    <div className="text-lg">{selectedCustomer.email}</div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Total Orders</label>
-                    <div className="text-lg font-bold">{selectedCustomer.totalOrders}</div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Total Spent</label>
-                    <div className="text-lg font-bold text-green-600">
-                      {formatCurrency(selectedCustomer.totalSpent)}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Status</label>
-                    <div>
-                      <Badge variant={selectedCustomer.isBanned ? "destructive" : "default"}>
-                        {selectedCustomer.isBanned ? "Banned" : "Active"}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Member Since</label>
-                    <div className="text-lg">{formatDate(selectedCustomer.createdAt)}</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Internal Notes */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Internal Notes</CardTitle>
-                  <CardDescription>Add private notes about this customer</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea
-                    placeholder="Add internal notes about this customer..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={4}
-                  />
-                  <Button onClick={() => saveCustomerNotes(selectedCustomer.id, notes)} className="w-full">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Save Notes
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Order History */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Order History</CardTitle>
-                  <CardDescription>{customerOrders.length} orders</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {customerOrders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between p-3 border rounded">
-                        <div>
-                          <div className="font-medium">#{order.orderNumber}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {formatDate(order.createdAt)} • {order.items?.length || 0} items
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold">{formatCurrency(order.total)}</div>
-                          <Badge variant="outline" className="text-xs">
-                            {order.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                    {customerOrders.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">No orders found for this customer</div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { productAPI, type Product } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
@@ -15,6 +16,7 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [collectionFilter, setCollectionFilter] = useState<string>("all")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
@@ -83,11 +85,15 @@ export function ProductsPage() {
     return product.variants.find((v) => v.id === product.defaultVariant) || product.variants[0]
   }
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.baseSku.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         product.baseSku.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesCollection = collectionFilter === "all" || 
+                             product.collectionType === collectionFilter
+    
+    return matchesSearch && matchesCollection
+  })
 
   if (loading) {
     return (
@@ -99,27 +105,39 @@ export function ProductsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground">Manage your product catalog with variants.</p>
-        </div>
-        <Button onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+        <p className="text-muted-foreground">Manage your product catalog with variants.</p>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Select value={collectionFilter} onValueChange={setCollectionFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by collection" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Collections</SelectItem>
+              <SelectItem value="men">Men Collection</SelectItem>
+              <SelectItem value="women">Women Collection</SelectItem>
+              <SelectItem value="train">Train Collection</SelectItem>
+              <SelectItem value="general">General</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+        <Button onClick={handleAdd} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Add Product
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -137,6 +155,9 @@ export function ProductsPage() {
                     <CardDescription className="mt-1">
                       SKU: {product.baseSku} • {product.category}
                       {product.subCategory && <> • {product.subCategory}</>}
+                      {product.collectionType && product.collectionType !== "general" && (
+                        <> • <Badge variant="outline" className="text-xs">{product.collectionType.toUpperCase()}</Badge></>
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex space-x-1 ml-2">

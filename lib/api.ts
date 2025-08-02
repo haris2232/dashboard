@@ -66,6 +66,7 @@ export interface Product {
   baseSku: string
   category: string
   subCategory?: string
+  collectionType?: "men" | "women" | "train" | "general"
   description: string
   images: string[]
   isActive: boolean
@@ -102,12 +103,25 @@ export interface Order {
 }
 
 export interface Customer {
-  id: string
+  _id: string
   name: string
   email: string
   totalOrders: number
   totalSpent: number
+  isActive: boolean
   isBanned: boolean
+  isEmailVerified: boolean
+  phone?: string
+  address?: {
+    street: string
+    city: string
+    state: string
+    zipCode: string
+    country: string
+  }
+  dateOfBirth?: string
+  marketingOptIn: boolean
+  banReason?: string
   notes?: string
   createdAt: string
 }
@@ -244,6 +258,7 @@ const mockProducts: Product[] = [
     basePrice: 29.99,
     baseSku: "PCT-001",
     category: "Clothing",
+    collectionType: "women",
     description: "High-quality cotton t-shirt with comfortable fit",
     images: ["/placeholder.svg?height=300&width=300"],
     isActive: true,
@@ -280,6 +295,7 @@ const mockProducts: Product[] = [
     basePrice: 149.99,
     baseSku: "GMK-002",
     category: "Electronics",
+    collectionType: "men",
     description: "RGB mechanical keyboard perfect for gaming",
     images: ["/placeholder.svg?height=300&width=300"],
     isActive: true,
@@ -301,6 +317,34 @@ const mockProducts: Product[] = [
     ],
     defaultVariant: "v5",
   },
+  {
+    _id: "3",
+    title: "Training Shorts",
+    basePrice: 45.99,
+    baseSku: "TS-003",
+    category: "Sports",
+    collectionType: "train",
+    description: "Comfortable training shorts for workouts",
+    images: ["/placeholder.svg?height=300&width=300"],
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    sizeOptions: ["S", "M", "L"],
+    colorOptions: [
+      { name: "Gray", type: "hex", value: "#6b7280" },
+      { name: "Black", type: "hex", value: "#000000" },
+    ],
+    variants: [
+      {
+        id: "v6",
+        size: "M",
+        color: { name: "Gray", type: "hex", value: "#6b7280" },
+        sku: "TS-003-M-GRY",
+        stock: 8,
+        isActive: true,
+      },
+    ],
+    defaultVariant: "v6",
+  },
 ];
 
 // Product API
@@ -317,6 +361,7 @@ export const productAPI = {
           baseSku: product.baseSku,
           category: product.category,
           subCategory: product.subCategory,
+          collectionType: product.collectionType,
           description: product.description,
           images: product.images || [],
           isActive: product.isActive,
@@ -332,6 +377,36 @@ export const productAPI = {
       console.error('Error fetching products:', error);
       // Return mock data if backend is not available
       return mockProducts;
+    }
+  },
+
+  getProductsByCollection: async (collectionType: "men" | "women" | "train" | "general"): Promise<Product[]> => {
+    try {
+      const response = await apiCall(`/products?collectionType=${collectionType}`);
+      if (response.data && Array.isArray(response.data)) {
+        return response.data.map((product: any) => ({
+          _id: product._id || product.id,
+          title: product.title,
+          basePrice: product.basePrice,
+          baseSku: product.baseSku,
+          category: product.category,
+          subCategory: product.subCategory,
+          collectionType: product.collectionType,
+          description: product.description,
+          images: product.images || [],
+          isActive: product.isActive,
+          createdAt: product.createdAt,
+          sizeOptions: product.sizeOptions || [],
+          colorOptions: product.colorOptions || [],
+          variants: product.variants || [],
+          defaultVariant: product.defaultVariant
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching products by collection:', error);
+      // Return mock data filtered by collection type if backend is not available
+      return mockProducts.filter(product => product.collectionType === collectionType);
     }
   },
 
@@ -506,56 +581,68 @@ export const orderAPI = {
 
 // Customer API
 export const customerAPI = {
-  getCustomers: async (): Promise<Customer[]> => {
+  getCustomers: async (): Promise<{ data: Customer[] }> => {
     try {
       console.log('🔍 Fetching customers from backend...');
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      console.log('🔑 Token available:', !!token);
-      
-      const response = await apiCall('/users/admin/all')
+      const response = await apiCall('/customers');
       console.log('📊 Backend response:', response);
-      
-      const customers = response.data.map((user: any) => ({
-        id: user._id,
-        name: user.firstName || user.name || user.email,
-        email: user.email,
-        totalOrders: user.totalOrders || 0,
-        totalSpent: user.totalSpent || 0,
-        isBanned: user.isBanned || false,
-        notes: user.notes || "",
-        createdAt: user.createdAt
-      }));
-      
-      console.log('👥 Mapped customers:', customers);
-      return customers;
+      return response;
     } catch (error) {
-      console.error('❌ Error fetching customers:', error)
+      console.error('❌ Error fetching customers:', error);
       console.log('🔄 Falling back to mock data...');
       // Fallback to mock data
-      return mockCustomers
+      await delay(500);
+      return { data: mockCustomers };
+    }
+  },
+
+  getCustomerById: async (id: string): Promise<Customer> => {
+    try {
+      const response = await apiCall(`/customers/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching customer:', error);
+      throw error;
     }
   },
 
   updateCustomer: async (id: string, customerData: Partial<Customer>): Promise<Customer> => {
     try {
-      if (customerData.isBanned !== undefined) {
-        const endpoint = customerData.isBanned ? `/users/admin/ban/${id}` : `/users/admin/unban/${id}`
-        const response = await apiCall(endpoint, {
-          method: 'POST',
-          body: JSON.stringify({ reason: customerData.notes || "No reason provided" })
-        })
-        return response.user
-      }
-      
-      // For other updates, use the user profile update endpoint
-      const response = await apiCall(`/users/profile/${id}`, {
+      const response = await apiCall(`/customers/${id}`, {
         method: 'PUT',
         body: JSON.stringify(customerData)
-      })
-      return response.data
+      });
+      return response.data;
     } catch (error) {
-      console.error('Error updating customer:', error)
-      throw error
+      console.error('Error updating customer:', error);
+      throw error;
+    }
+  },
+
+  banCustomer: async (id: string): Promise<void> => {
+    try {
+      await apiCall(`/customers/ban/${id}`, { method: 'POST' });
+    } catch (error) {
+      console.error('Error banning customer:', error);
+      throw error;
+    }
+  },
+
+  unbanCustomer: async (id: string): Promise<void> => {
+    try {
+      await apiCall(`/customers/unban/${id}`, { method: 'POST' });
+    } catch (error) {
+      console.error('Error unbanning customer:', error);
+      throw error;
+    }
+  },
+
+  deleteCustomer: async (id: string): Promise<void> => {
+    try {
+      await apiCall(`/customers/${id}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      throw error;
     }
   },
 }
@@ -982,25 +1069,58 @@ export const settingsAPI = {
 // User API
 export const userAPI = {
   getUsers: async (): Promise<{ data: User[] }> => {
-    await delay(500)
-    return { data: mockUsers }
+    try {
+      const response = await apiCall('/users');
+      return response;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      // Fallback to mock data if API fails
+      await delay(500);
+      return { data: mockUsers };
+    }
   },
   createUser: async (data: Omit<User, "_id" | "createdAt">): Promise<User> => {
-    await delay(800)
-    const newUser: User = { ...data, _id: Math.random().toString(36).slice(2), createdAt: new Date().toISOString() }
-    mockUsers.push(newUser)
-    return newUser
+    try {
+      const response = await apiCall('/users', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      // Fallback to mock data if API fails
+      await delay(800);
+      const newUser: User = { ...data, _id: Math.random().toString(36).slice(2), createdAt: new Date().toISOString() };
+      mockUsers.push(newUser);
+      return newUser;
+    }
   },
   updateUser: async (id: string, data: Partial<User>): Promise<User> => {
-    await delay(800)
-    const idx = mockUsers.findIndex((u) => u._id === id)
-    if (idx === -1) throw new Error("User not found")
-    mockUsers[idx] = { ...mockUsers[idx], ...data }
-    return mockUsers[idx]
+    try {
+      const response = await apiCall(`/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      // Fallback to mock data if API fails
+      await delay(800);
+      const idx = mockUsers.findIndex((u) => u._id === id);
+      if (idx === -1) throw new Error("User not found");
+      mockUsers[idx] = { ...mockUsers[idx], ...data };
+      return mockUsers[idx];
+    }
   },
   deleteUser: async (id: string): Promise<void> => {
-    await delay(300)
-    mockUsers = mockUsers.filter((u) => u._id !== id)
+    try {
+      await apiCall(`/users/${id}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      // Fallback to mock data if API fails
+      await delay(300);
+      mockUsers = mockUsers.filter((u) => u._id !== id);
+    }
   },
 }
 
