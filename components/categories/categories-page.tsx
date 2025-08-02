@@ -22,6 +22,9 @@ interface Category {
   showInCarousel?: boolean
   carouselOrder?: number
   carouselImage?: string
+  discountPercentage?: number
+  displaySection?: string
+  sectionOrder?: number
   createdAt: string
 }
 

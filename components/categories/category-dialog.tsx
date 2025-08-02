@@ -19,6 +19,9 @@ interface Category {
   carouselImage?: string
   showInCarousel?: boolean
   carouselOrder?: number
+  discountPercentage?: number
+  displaySection?: string
+  sectionOrder?: number
   isActive: boolean
   createdAt: string
 }
@@ -39,6 +42,9 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
     isActive: category?.isActive ?? true,
     showInCarousel: category?.showInCarousel ?? false,
     carouselOrder: category?.carouselOrder || 0,
+    discountPercentage: category?.discountPercentage || 0,
+    displaySection: category?.displaySection || 'none',
+    sectionOrder: category?.sectionOrder || 0,
   })
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -118,6 +124,9 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
         isActive: true,
         showInCarousel: false,
         carouselOrder: 0,
+        discountPercentage: 0,
+        displaySection: 'none',
+        sectionOrder: 0,
       })
     } catch (error) {
       toast({
@@ -300,6 +309,52 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
                 <p className="text-sm text-gray-500 mt-1">Lower numbers appear first</p>
               </div>
             )}
+
+            <div>
+              <Label htmlFor="displaySection">Display Section</Label>
+              <select
+                id="displaySection"
+                value={formData.displaySection}
+                onChange={(e) => setFormData(prev => ({ ...prev, displaySection: e.target.value }))}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="none">None</option>
+                <option value="carousel">Carousel</option>
+                <option value="women">Women Collection</option>
+                <option value="men">Men Collection</option>
+                <option value="training">Training Section</option>
+              </select>
+              <p className="text-sm text-gray-500 mt-1">Choose where this category should appear</p>
+            </div>
+
+            {formData.displaySection !== 'none' && (
+              <div>
+                <Label htmlFor="sectionOrder">Section Order</Label>
+                <Input
+                  id="sectionOrder"
+                  type="number"
+                  value={formData.sectionOrder}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sectionOrder: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                  min="0"
+                />
+                <p className="text-sm text-gray-500 mt-1">Lower numbers appear first in the section</p>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="discountPercentage">Discount Percentage (Optional)</Label>
+              <Input
+                id="discountPercentage"
+                type="number"
+                value={formData.discountPercentage}
+                onChange={(e) => setFormData(prev => ({ ...prev, discountPercentage: parseInt(e.target.value) || 0 }))}
+                placeholder="0"
+                min="0"
+                max="100"
+              />
+              <p className="text-sm text-gray-500 mt-1">Set discount percentage (0-100)</p>
+            </div>
           </div>
 
           {/* Actions */}
