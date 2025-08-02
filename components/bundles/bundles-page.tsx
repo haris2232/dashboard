@@ -88,7 +88,7 @@ export function BundlesPage() {
         endDate: bundle.endDate || "",
         isActive: bundle.isActive,
       })
-      setSelectedProducts(bundle.products.map((p) => p.id))
+      setSelectedProducts(bundle.products.map((p) => p._id))
     } else {
       setEditingBundle(null)
       form.reset()
@@ -115,13 +115,13 @@ export function BundlesPage() {
     }
 
     try {
-      const bundleProducts = products.filter((p) => selectedProducts.includes(p.id))
+      const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
       const originalPrice = bundleProducts.reduce((sum, product) => sum + product.basePrice, 0)
 
       const bundleData = {
         ...values,
         bundlePrice: Number.parseFloat(values.bundlePrice),
-        products: bundleProducts,
+        products: selectedProducts, // Send just the product IDs
         originalPrice,
         createdAt: editingBundle?.createdAt || new Date().toISOString(),
       }
@@ -292,10 +292,10 @@ export function BundlesPage() {
                   <FormLabel className="text-base font-medium">Select Products</FormLabel>
                   <div className="mt-2 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
                     {products.map((product) => (
-                      <div key={product.id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded">
+                      <div key={product._id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded">
                         <Checkbox
-                          checked={selectedProducts.includes(product.id)}
-                          onCheckedChange={() => toggleProductSelection(product.id)}
+                          checked={selectedProducts.includes(product._id)}
+                          onCheckedChange={() => toggleProductSelection(product._id)}
                         />
                         <img
                           src={product.images[0] || "/placeholder.svg"}
@@ -316,7 +316,7 @@ export function BundlesPage() {
                         {selectedProducts.length} products selected • Original Price:{" "}
                         {formatCurrency(
                           products
-                            .filter((p) => selectedProducts.includes(p.id))
+                            .filter((p) => selectedProducts.includes(p._id))
                             .reduce((sum, p) => sum + p.basePrice, 0),
                         )}
                       </div>
@@ -385,7 +385,7 @@ export function BundlesPage() {
                     <h4 className="font-medium mb-3">Included Products ({bundle.products.length})</h4>
                     <div className="space-y-2">
                       {bundle.products.map((product) => (
-                        <div key={product.id} className="flex items-center space-x-2 text-sm">
+                        <div key={product._id} className="flex items-center space-x-2 text-sm">
                           <img
                             src={product.images?.[0] || "/placeholder.svg"}
                             alt={product.title}

@@ -8,7 +8,7 @@ import { ReviewsPage } from "@/components/reviews/reviews-page"
 import { CategoriesPage } from "@/components/categories/categories-page"
 import { CouponsPage } from "@/components/coupons/coupons-page"
 import { BundlesPage } from "@/components/bundles/bundles-page"
-import { ShippingPage } from "@/components/shipping/shipping-page"
+import ShippingPage from "@/components/shipping/shipping-page"
 import { UsersPage } from "@/components/users/users-page"
 import { SettingsPage } from "@/components/settings/settings-page"
 

@@ -1,135 +1,52 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus, Edit, Trash2, Truck } from "lucide-react"
 import { shippingAPI } from "@/lib/api"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { useToast } from "@/components/ui/use-toast"
-import { Plus, Truck, MapPin, DollarSign } from "lucide-react"
-
-const shippingRuleSchema = z.object({
-  name: z.string().min(1, "Rule name is required"),
-  region: z.string().min(1, "Region is required"),
-  minWeight: z.string().optional(),
-  maxWeight: z.string().optional(),
-  minAmount: z.string().optional(),
-  maxAmount: z.string().optional(),
-  shippingCost: z.string().min(1, "Shipping cost is required"),
-  freeShippingThreshold: z.string().optional(),
-  estimatedDays: z.string().min(1, "Estimated delivery days is required"),
-  isActive: z.boolean(),
-})
-
-const generalSettingsSchema = z.object({
-  freeShippingThreshold: z.string().min(1, "Free shipping threshold is required"),
-  freeGiftThreshold: z.string().min(1, "Free gift threshold is required"),
-  defaultShippingCost: z.string().min(1, "Default shipping cost is required"),
-  enableFreeShipping: z.boolean(),
-  enableFreeGift: z.boolean(),
-  freeGiftProduct: z.string().optional(),
-})
+import { useToast } from "@/hooks/use-toast"
+import ShippingRuleDialog from "./shipping-rule-dialog"
 
 interface ShippingRule {
-  id: string
+  _id: string
   name: string
   region: string
-  minWeight?: number
-  maxWeight?: number
-  minAmount?: number
-  maxAmount?: number
+  minWeight: number
+  maxWeight: number
+  minOrderAmount: number
+  maxOrderAmount: number
   shippingCost: number
-  freeShippingThreshold?: number
-  estimatedDays: number
+  freeShippingAt: number
+  deliveryDays: number
   isActive: boolean
+  priority: number
   createdAt: string
 }
 
-interface ShippingSettings {
-  freeShippingThreshold: number
-  freeGiftThreshold: number
-  defaultShippingCost: number
-  enableFreeShipping: boolean
-  enableFreeGift: boolean
-  freeGiftProduct?: string
-}
-
-export function ShippingPage() {
+export default function ShippingPage() {
+  const [rules, setRules] = useState<ShippingRule[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [shippingRules, setShippingRules] = useState<ShippingRule[]>([])
-  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null)
-  const [ruleDialogOpen, setRuleDialogOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [editingRule, setEditingRule] = useState<ShippingRule | null>(null)
   const { toast } = useToast()
 
-  const settingsForm = useForm<z.infer<typeof generalSettingsSchema>>({
-    resolver: zodResolver(generalSettingsSchema),
-    defaultValues: {
-      freeShippingThreshold: "50",
-      freeGiftThreshold: "100",
-      defaultShippingCost: "9.99",
-      enableFreeShipping: true,
-      enableFreeGift: true,
-      freeGiftProduct: "",
-    },
-  })
-
-  const ruleForm = useForm<z.infer<typeof shippingRuleSchema>>({
-    resolver: zodResolver(shippingRuleSchema),
-    defaultValues: {
-      name: "",
-      region: "",
-      minWeight: "",
-      maxWeight: "",
-      minAmount: "",
-      maxAmount: "",
-      shippingCost: "",
-      freeShippingThreshold: "",
-      estimatedDays: "3",
-      isActive: true,
-    },
-  })
-
   useEffect(() => {
-    fetchData()
+    loadShippingRules()
   }, [])
 
-  const fetchData = async () => {
+  const loadShippingRules = async () => {
     try {
-      const [rulesResponse, settingsResponse] = await Promise.all([
-        shippingAPI.getShippingRules(),
-        shippingAPI.getShippingSettings(),
-      ])
-
-      setShippingRules(rulesResponse.data)
-      setShippingSettings(settingsResponse.data)
-
-      // Update form with settings
-      if (settingsResponse.data) {
-        settingsForm.reset({
-          freeShippingThreshold: settingsResponse.data.freeShippingThreshold.toString(),
-          freeGiftThreshold: settingsResponse.data.freeGiftThreshold.toString(),
-          defaultShippingCost: settingsResponse.data.defaultShippingCost.toString(),
-          enableFreeShipping: settingsResponse.data.enableFreeShipping,
-          enableFreeGift: settingsResponse.data.enableFreeGift,
-          freeGiftProduct: settingsResponse.data.freeGiftProduct || "",
-        })
-      }
+      setLoading(true)
+      const response = await shippingAPI.getShippingRules()
+      setRules(response.data || [])
     } catch (error) {
+      console.error("Error loading shipping rules:", error)
       toast({
         title: "Error",
-        description: "Failed to fetch shipping data",
+        description: "Failed to load shipping rules",
         variant: "destructive",
       })
     } finally {
@@ -137,87 +54,30 @@ export function ShippingPage() {
     }
   }
 
-  const onSettingsSubmit = async (values: z.infer<typeof generalSettingsSchema>) => {
-    try {
-      setSaving(true)
-      const settingsData = {
-        ...values,
-        freeShippingThreshold: Number.parseFloat(values.freeShippingThreshold),
-        freeGiftThreshold: Number.parseFloat(values.freeGiftThreshold),
-        defaultShippingCost: Number.parseFloat(values.defaultShippingCost),
-      }
-
-      await shippingAPI.updateShippingSettings(settingsData)
-      toast({
-        title: "Success",
-        description: "Shipping settings updated successfully",
-      })
-      fetchData()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update shipping settings",
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
-    }
+  const handleCreateRule = () => {
+    setEditingRule(null)
+    setDialogOpen(true)
   }
 
-  const onRuleSubmit = async (values: z.infer<typeof shippingRuleSchema>) => {
-    try {
-      setSaving(true)
-      const ruleData = {
-        ...values,
-        minWeight: values.minWeight ? Number.parseFloat(values.minWeight) : undefined,
-        maxWeight: values.maxWeight ? Number.parseFloat(values.maxWeight) : undefined,
-        minAmount: values.minAmount ? Number.parseFloat(values.minAmount) : undefined,
-        maxAmount: values.maxAmount ? Number.parseFloat(values.maxAmount) : undefined,
-        shippingCost: Number.parseFloat(values.shippingCost),
-        freeShippingThreshold: values.freeShippingThreshold
-          ? Number.parseFloat(values.freeShippingThreshold)
-          : undefined,
-        estimatedDays: Number.parseInt(values.estimatedDays),
-      }
-
-      if (editingRule) {
-        await shippingAPI.updateShippingRule(editingRule.id, ruleData)
-        toast({
-          title: "Success",
-          description: "Shipping rule updated successfully",
-        })
-      } else {
-        await shippingAPI.createShippingRule(ruleData)
-        toast({
-          title: "Success",
-          description: "Shipping rule created successfully",
-        })
-      }
-
-      setRuleDialogOpen(false)
-      setEditingRule(null)
-      ruleForm.reset()
-      fetchData()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save shipping rule",
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
-    }
+  const handleEditRule = (rule: ShippingRule) => {
+    setEditingRule(rule)
+    setDialogOpen(true)
   }
 
-  const deleteRule = async (ruleId: string) => {
+  const handleDeleteRule = async (ruleId: string) => {
+    if (!confirm("Are you sure you want to delete this shipping rule?")) {
+      return
+    }
+
     try {
       await shippingAPI.deleteShippingRule(ruleId)
       toast({
         title: "Success",
         description: "Shipping rule deleted successfully",
       })
-      fetchData()
+      loadShippingRules()
     } catch (error) {
+      console.error("Error deleting shipping rule:", error)
       toast({
         title: "Error",
         description: "Failed to delete shipping rule",
@@ -226,432 +86,193 @@ export function ShippingPage() {
     }
   }
 
-  const openRuleDialog = (rule?: ShippingRule) => {
-    if (rule) {
-      setEditingRule(rule)
-      ruleForm.reset({
-        name: rule.name,
-        region: rule.region,
-        minWeight: rule.minWeight?.toString() || "",
-        maxWeight: rule.maxWeight?.toString() || "",
-        minAmount: rule.minAmount?.toString() || "",
-        maxAmount: rule.maxAmount?.toString() || "",
-        shippingCost: rule.shippingCost.toString(),
-        freeShippingThreshold: rule.freeShippingThreshold?.toString() || "",
-        estimatedDays: rule.estimatedDays.toString(),
-        isActive: rule.isActive,
-      })
-    } else {
+  const handleDialogClose = () => {
+    setDialogOpen(false)
       setEditingRule(null)
-      ruleForm.reset()
+  }
+
+  const handleDialogSave = async () => {
+    await loadShippingRules()
+    handleDialogClose()
+  }
+
+  const getRegionColor = (region: string) => {
+    const colors: { [key: string]: string } = {
+      US: "bg-blue-100 text-blue-800",
+      INTL: "bg-purple-100 text-purple-800",
+      EU: "bg-green-100 text-green-800",
+      ASIA: "bg-orange-100 text-orange-800",
+      GLOBAL: "bg-gray-100 text-gray-800",
     }
-    setRuleDialogOpen(true)
+    return colors[region] || "bg-gray-100 text-gray-800"
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading shipping rules...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Shipping Management</h1>
-          <p className="text-muted-foreground">Configure shipping rules, rates, and free shipping thresholds.</p>
+          <h1 className="text-3xl font-bold">Shipping Management</h1>
+          <p className="text-gray-600 mt-2">
+            Configure shipping rules, rates, and free shipping thresholds.
+          </p>
         </div>
+        <Button onClick={handleCreateRule}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Rule
+        </Button>
       </div>
 
-      <Tabs defaultValue="settings" className="space-y-4">
+      <Tabs defaultValue="rules" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="settings">General Settings</TabsTrigger>
           <TabsTrigger value="rules">Shipping Rules</TabsTrigger>
+          <TabsTrigger value="settings">General Settings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="settings" className="space-y-4">
+        <TabsContent value="rules" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <DollarSign className="mr-2 h-5 w-5" />
-                Free Shipping & Gifts
-              </CardTitle>
-              <CardDescription>Configure free shipping thresholds and free gift promotions</CardDescription>
+              <CardTitle>Shipping Rules</CardTitle>
+              <CardDescription>
+                Create region-specific shipping rules and rates.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Form {...settingsForm}>
-                <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={settingsForm.control}
-                      name="enableFreeShipping"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Enable Free Shipping</FormLabel>
-                            <FormDescription>Offer free shipping above a certain order amount</FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={settingsForm.control}
-                      name="enableFreeGift"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Enable Free Gift</FormLabel>
-                            <FormDescription>Offer a free gift above a certain order amount</FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={settingsForm.control}
-                      name="freeShippingThreshold"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Free Shipping Threshold ($)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" placeholder="50.00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={settingsForm.control}
-                      name="freeGiftThreshold"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Free Gift Threshold ($)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" placeholder="100.00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={settingsForm.control}
-                      name="defaultShippingCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Default Shipping Cost ($)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" placeholder="9.99" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={settingsForm.control}
-                    name="freeGiftProduct"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Free Gift Product</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter product name or ID for free gift" {...field} />
-                        </FormControl>
-                        <FormDescription>Product to give as a free gift when threshold is met</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" disabled={saving}>
-                    {saving ? "Saving..." : "Save Settings"}
+              {rules.length === 0 ? (
+                <div className="text-center py-8">
+                  <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No shipping rules configured
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Create your first shipping rule to get started.
+                  </p>
+                  <Button onClick={handleCreateRule}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Rule
                   </Button>
-                </form>
-              </Form>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {rules.map((rule) => (
+                    <div
+                      key={rule._id}
+                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
+          <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Truck className="w-5 h-5 text-gray-500" />
+            <div>
+                            <h3 className="font-medium">{rule.name}</h3>
+                            <p className="text-sm text-gray-600">
+                              {rule.region} • {rule.deliveryDays} days delivery
+                            </p>
+                          </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                          <Badge
+                            variant={rule.isActive ? "default" : "secondary"}
+                          >
+                        {rule.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditRule(rule)}
+                          >
+                            <Edit className="w-4 h-4" />
+                      </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteRule(rule._id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                          <span className="text-gray-600">Shipping Cost:</span>
+                          <p className="font-medium">${rule.shippingCost}</p>
+                    </div>
+                      <div>
+                          <span className="text-gray-600">Free Shipping At:</span>
+                          <p className="font-medium">${rule.freeShippingAt}</p>
+                      </div>
+                      <div>
+                          <span className="text-gray-600">Order Range:</span>
+                          <p className="font-medium">
+                            ${rule.minOrderAmount} - ${rule.maxOrderAmount}
+                          </p>
+                        </div>
+                      <div>
+                          <span className="text-gray-600">Weight Range:</span>
+                          <p className="font-medium">
+                            {rule.minWeight} - {rule.maxWeight} lbs
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                      </div>
+                    )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="rules" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium">Shipping Rules</h3>
-              <p className="text-sm text-muted-foreground">Create region-specific shipping rules and rates</p>
-            </div>
-            <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => openRuleDialog()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Rule
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>{editingRule ? "Edit Shipping Rule" : "Create Shipping Rule"}</DialogTitle>
-                </DialogHeader>
-
-                <Form {...ruleForm}>
-                  <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={ruleForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rule Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., US Standard Shipping" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={ruleForm.control}
-                        name="region"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Region</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select region" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="US">United States</SelectItem>
-                                <SelectItem value="CA">Canada</SelectItem>
-                                <SelectItem value="EU">Europe</SelectItem>
-                                <SelectItem value="UK">United Kingdom</SelectItem>
-                                <SelectItem value="AU">Australia</SelectItem>
-                                <SelectItem value="INTL">International</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={ruleForm.control}
-                        name="minWeight"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Min Weight (lbs)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.1" placeholder="0" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={ruleForm.control}
-                        name="maxWeight"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Max Weight (lbs)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.1" placeholder="10" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={ruleForm.control}
-                        name="minAmount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Min Order Amount ($)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" placeholder="0" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={ruleForm.control}
-                        name="maxAmount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Max Order Amount ($)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" placeholder="100" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <FormField
-                        control={ruleForm.control}
-                        name="shippingCost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Shipping Cost ($)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" placeholder="9.99" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={ruleForm.control}
-                        name="freeShippingThreshold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Free Shipping At ($)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" placeholder="50" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={ruleForm.control}
-                        name="estimatedDays"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Delivery Days</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="3" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={ruleForm.control}
-                      name="isActive"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Active Rule</FormLabel>
-                            <FormDescription>Enable this shipping rule</FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={() => setRuleDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={saving}>
-                        {saving ? "Saving..." : editingRule ? "Update Rule" : "Create Rule"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="grid gap-4">
-            {shippingRules.map((rule) => (
-              <Card key={rule.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center">
-                        <Truck className="mr-2 h-4 w-4" />
-                        {rule.name}
-                      </CardTitle>
-                      <CardDescription className="flex items-center mt-1">
-                        <MapPin className="mr-1 h-3 w-3" />
-                        {rule.region} • {rule.estimatedDays} days delivery
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={rule.isActive ? "default" : "secondary"}>
-                        {rule.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                      <Button variant="outline" size="sm" onClick={() => openRuleDialog(rule)}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => deleteRule(rule.id)}>
-                        Delete
-                      </Button>
-                    </div>
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>General Settings</CardTitle>
+              <CardDescription>
+                Configure default shipping settings and preferences.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium mb-2">Default Settings</h3>
+                  <p className="text-sm text-gray-600">
+                    These settings apply when no specific shipping rule matches.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Default Shipping Cost
+                    </label>
+                    <p className="text-sm text-gray-600">$20.00</p>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Shipping Cost:</span>
-                      <div className="font-medium">${rule.shippingCost.toFixed(2)}</div>
-                    </div>
-                    {rule.freeShippingThreshold && (
-                      <div>
-                        <span className="text-muted-foreground">Free Shipping At:</span>
-                        <div className="font-medium">${rule.freeShippingThreshold.toFixed(2)}</div>
-                      </div>
-                    )}
-                    {rule.minWeight && rule.maxWeight && (
-                      <div>
-                        <span className="text-muted-foreground">Weight Range:</span>
-                        <div className="font-medium">
-                          {rule.minWeight} - {rule.maxWeight} lbs
-                        </div>
-                      </div>
-                    )}
-                    {rule.minAmount && rule.maxAmount && (
-                      <div>
-                        <span className="text-muted-foreground">Order Range:</span>
-                        <div className="font-medium">
-                          ${rule.minAmount} - ${rule.maxAmount}
-                        </div>
-                      </div>
-                    )}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Default Free Shipping Threshold
+                    </label>
+                    <p className="text-sm text-gray-600">$500.00</p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-
-            {shippingRules.length === 0 && (
-              <div className="text-center py-12">
-                <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No shipping rules found</h3>
-                <p className="text-gray-500">Create your first shipping rule to get started</p>
+                </div>
               </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      <ShippingRuleDialog
+        open={dialogOpen}
+        onClose={handleDialogClose}
+        onSave={handleDialogSave}
+        rule={editingRule}
+      />
     </div>
   )
 }
