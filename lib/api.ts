@@ -227,17 +227,18 @@ export interface Settings {
 }
 
 export interface ShippingRule {
-  id: string
+  _id: string
   name: string
   region: string
-  minWeight?: number
-  maxWeight?: number
-  minAmount?: number
-  maxAmount?: number
+  minWeight: number
+  maxWeight: number
+  minOrderAmount: number
+  maxOrderAmount: number
   shippingCost: number
-  freeShippingThreshold?: number
-  estimatedDays: number
+  freeShippingAt: number
+  deliveryDays: number
   isActive: boolean
+  priority: number
   createdAt: string
 }
 
@@ -828,25 +829,83 @@ export const categoryAPI = {
 // Bundle API
 export const bundleAPI = {
   getBundles: async (): Promise<{ data: Bundle[] }> => {
-    await delay(500)
-    return { data: mockBundles }
+    try {
+      const response = await apiCall('/bundles');
+      return response;
+    } catch (error) {
+      console.error('Error fetching bundles:', error);
+      return { data: [] };
+    }
   },
+  
+  getBundleById: async (id: string): Promise<Bundle> => {
+    try {
+      const response = await apiCall(`/bundles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching bundle:', error);
+      throw error;
+    }
+  },
+  
   createBundle: async (data: Omit<Bundle, "_id">): Promise<Bundle> => {
-    await delay(1000)
-    const newBundle: Bundle = { ...data, _id: Math.random().toString(36).slice(2) }
-    mockBundles.push(newBundle)
-    return newBundle
+    try {
+      const response = await apiCall('/bundles', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating bundle:', error);
+      throw error;
+    }
   },
+  
   updateBundle: async (id: string, data: Partial<Bundle>): Promise<Bundle> => {
-    await delay(1000)
-    const idx = mockBundles.findIndex((b) => b._id === id)
-    if (idx === -1) throw new Error("Bundle not found")
-    mockBundles[idx] = { ...mockBundles[idx], ...data }
-    return mockBundles[idx]
+    try {
+      const response = await apiCall(`/bundles/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating bundle:', error);
+      throw error;
+    }
   },
+  
   deleteBundle: async (id: string): Promise<void> => {
-    await delay(300)
-    mockBundles = mockBundles.filter((b) => b._id !== id)
+    try {
+      await apiCall(`/bundles/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Error deleting bundle:', error);
+      throw error;
+    }
+  },
+  
+  getActiveBundles: async (): Promise<{ data: Bundle[] }> => {
+    try {
+      const response = await apiCall('/bundles/public/active');
+      return response;
+    } catch (error) {
+      console.error('Error fetching active bundles:', error);
+      return { data: [] };
+    }
+  },
+  
+  calculateBundleDiscount: async (cartItems: any[]): Promise<any> => {
+    try {
+      const response = await apiCall('/bundles/public/calculate-discount', {
+        method: 'POST',
+        body: JSON.stringify({ cartItems }),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error calculating bundle discount:', error);
+      throw error;
+    }
   },
 }
 
@@ -1127,38 +1186,36 @@ export const userAPI = {
 // Shipping API
 export const shippingAPI = {
   getShippingRules: async (): Promise<{ data: ShippingRule[] }> => {
-    await delay(500)
-    return { data: mockShippingRules }
+    return apiCall('/shipping')
   },
-  createShippingRule: async (data: Omit<ShippingRule, "id" | "createdAt">): Promise<ShippingRule> => {
-    await delay(800)
-    const newRule: ShippingRule = {
-      ...data,
-      id: Math.random().toString(36).slice(2),
-      createdAt: new Date().toISOString(),
-    }
-    mockShippingRules.push(newRule)
-    return newRule
+  getShippingRuleById: async (id: string): Promise<{ data: ShippingRule }> => {
+    return apiCall(`/shipping/${id}`)
   },
-  updateShippingRule: async (id: string, data: Partial<ShippingRule>): Promise<ShippingRule> => {
-    await delay(800)
-    const idx = mockShippingRules.findIndex((r) => r.id === id)
-    if (idx === -1) throw new Error("Shipping rule not found")
-    mockShippingRules[idx] = { ...mockShippingRules[idx], ...data }
-    return mockShippingRules[idx]
+  createShippingRule: async (data: Omit<ShippingRule, "_id" | "createdAt">): Promise<{ data: ShippingRule }> => {
+    return apiCall('/shipping', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  updateShippingRule: async (id: string, data: Partial<ShippingRule>): Promise<{ data: ShippingRule }> => {
+    return apiCall(`/shipping/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
   },
   deleteShippingRule: async (id: string): Promise<void> => {
-    await delay(300)
-    mockShippingRules = mockShippingRules.filter((r) => r.id !== id)
+    return apiCall(`/shipping/${id}`, {
+      method: 'DELETE'
+    })
   },
-  getShippingSettings: async (): Promise<{ data: ShippingSettings }> => {
-    await delay(400)
-    return { data: mockShippingSettings }
+  getActiveShippingRules: async (): Promise<{ data: ShippingRule[] }> => {
+    return apiCall('/shipping/public/active')
   },
-  updateShippingSettings: async (data: Partial<ShippingSettings>): Promise<ShippingSettings> => {
-    await delay(800)
-    mockShippingSettings = { ...mockShippingSettings, ...data }
-    return mockShippingSettings
+  calculateShipping: async (data: { subtotal: number; region?: string; weight?: number }): Promise<any> => {
+    return apiCall('/shipping/public/calculate', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   },
 }
 
