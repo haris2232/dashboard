@@ -173,7 +173,14 @@ export function ProductsPage() {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">${finalPrice.toFixed(2)}</span>
+                    <div className="flex items-center space-x-2">
+                      {product.discountPercentage && product.discountPercentage > 0 && (
+                        <Badge variant="destructive" className="text-xs">
+                          -{product.discountPercentage}%
+                        </Badge>
+                      )}
+                      <span className="text-2xl font-bold">${finalPrice.toFixed(2)}</span>
+                    </div>
                     <Badge variant={product.isActive ? "default" : "secondary"}>
                       {product.isActive ? "Active" : "Inactive"}
                     </Badge>

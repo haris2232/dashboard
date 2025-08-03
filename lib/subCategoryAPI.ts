@@ -28,53 +28,44 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 export const subCategoryAPI = {
   async getAll(): Promise<SubCategory[]> {
     try {
-      const response = await apiCall('/categories');
+      const response = await apiCall('/subcategories/public');
       // Transform the response to match SubCategory interface
-      return response.data.map((category: any) => ({
-        id: category._id,
-        name: category.name,
-        description: category.description || '',
-        image: category.image || '',
-        isActive: category.isActive,
-        createdAt: category.createdAt
+      return response.data.map((subCategory: any) => ({
+        id: subCategory._id,
+        name: subCategory.name,
+        category: subCategory.category
       }));
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching subcategories:', error);
       return [];
     }
   },
   
   async create(data: Omit<SubCategory, "id">): Promise<SubCategory> {
-    const response = await apiCall('/categories', {
+    const response = await apiCall('/subcategories', {
       method: "POST",
       body: JSON.stringify(data),
     });
     return {
       id: response.data._id,
       name: response.data.name,
-      description: response.data.description || '',
-      image: response.data.image || '',
-      isActive: response.data.isActive,
-      createdAt: response.data.createdAt
+      category: response.data.category
     };
   },
   
   async update(id: string, data: Omit<SubCategory, "id">): Promise<SubCategory> {
-    const response = await apiCall(`/categories/${id}`, {
+    const response = await apiCall(`/subcategories/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
     return {
       id: response.data._id,
       name: response.data.name,
-      description: response.data.description || '',
-      image: response.data.image || '',
-      isActive: response.data.isActive,
-      createdAt: response.data.createdAt
+      category: response.data.category
     };
   },
   
   async delete(id: string): Promise<void> {
-    await apiCall(`/categories/${id}`, { method: "DELETE" });
+    await apiCall(`/subcategories/${id}`, { method: "DELETE" });
   },
 }

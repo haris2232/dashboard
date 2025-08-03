@@ -98,11 +98,11 @@ export function CategoriesPage() {
         showInCarousel,
         carouselOrder: showInCarousel ? (categories.length + 1) : 0
       })
-      toast({
-        title: "Success",
+        toast({
+          title: "Success",
         description: `Category ${showInCarousel ? 'added to' : 'removed from'} carousel`,
-      })
-      fetchCategories()
+        })
+        fetchCategories()
     } catch (error) {
       toast({
         title: "Error",
@@ -121,9 +121,9 @@ export function CategoriesPage() {
           description: "Category deleted successfully",
         })
         fetchCategories()
-      } catch (error) {
-        toast({
-          title: "Error",
+    } catch (error) {
+      toast({
+        title: "Error",
           description: "Failed to delete category",
           variant: "destructive",
         })
@@ -137,7 +137,7 @@ export function CategoriesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
       </div>
     )
@@ -189,8 +189,8 @@ export function CategoriesPage() {
                   >
                     {category.showInCarousel ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => {
                       setSelectedCategory(category)
@@ -199,8 +199,8 @@ export function CategoriesPage() {
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteCategory(category._id)}
                   >
@@ -210,17 +210,17 @@ export function CategoriesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Category Image */}
-              {category.image && (
+                {/* Category Image */}
+                {category.image && (
                 <div className="mb-4">
-                  <img
-                    src={category.image}
-                    alt={category.name}
+                    <img 
+                      src={category.image} 
+                      alt={category.name}
                     className="w-full h-32 object-cover rounded-lg"
                   />
-                </div>
-              )}
-              
+                  </div>
+                )}
+                
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status:</span>
@@ -232,7 +232,7 @@ export function CategoriesPage() {
                   <span className="text-sm text-muted-foreground">Carousel:</span>
                   <Badge variant={category.showInCarousel ? "default" : "secondary"}>
                     {category.showInCarousel ? "Shown" : "Hidden"}
-                  </Badge>
+                    </Badge>
                 </div>
                 {category.showInCarousel && (
                   <div className="flex justify-between">
@@ -249,13 +249,22 @@ export function CategoriesPage() {
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-4">Categories & Sub-Categories</h1>
         <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
-          <input
+          <select
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Sub-category name"
             className="border px-2 py-1 rounded"
             required
-          />
+          >
+            <option value="">Select sub-category</option>
+            <option value="T-Shirts">T-Shirts</option>
+            <option value="Shorts">Shorts</option>
+            <option value="Trousers">Trousers</option>
+            <option value="Twinsets">Twinsets</option>
+            <option value="Tanks">Tanks</option>
+            <option value="Leggings">Leggings</option>
+            <option value="Tank Tops">Tank Tops</option>
+            <option value="Sports Bras">Sports Bras</option>
+          </select>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -263,11 +272,8 @@ export function CategoriesPage() {
             required
           >
             <option value="">Select parent category</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))}
+            <option value="Men">Men</option>
+            <option value="Women">Women</option>
           </select>
           <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">
             {editing ? "Update" : "Add"}
@@ -301,7 +307,7 @@ export function CategoriesPage() {
             </li>
           ))}
         </ul>
-      </div>
+        </div>
 
       {/* Category Dialog */}
       <CategoryDialog

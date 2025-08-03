@@ -12,10 +12,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
 import { productAPI, type Product, type ProductVariant } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { X, Plus, Star, Upload, Palette, ImageIcon, Trash2, MoveUp, MoveDown } from "lucide-react"
+import { subCategoryAPI } from "@/lib/subCategoryAPI"
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -23,8 +24,13 @@ const formSchema = z.object({
   baseSku: z.string().min(1, "SKU is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().optional(),
-  collectionType: z.enum(["men", "women", "train", "general"]).optional(),
+  discountPercentage: z.string().optional(),
   description: z.string().optional(),
+  purpose: z.string().optional(),
+  features: z.string().optional(),
+  materials: z.string().optional(),
+  care: z.string().optional(),
+  reviewRating: z.string().optional(),
   isActive: z.boolean(),
 })
 
@@ -32,6 +38,12 @@ interface ProductDialogProps {
   open: boolean
   onClose: (shouldRefresh?: boolean) => void
   product?: Product | null
+}
+
+interface ColorOption {
+  name: string
+  type: "hex" | "image"
+  value: string
 }
 
 export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
@@ -56,6 +68,51 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [uploadingImages, setUploadingImages] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+  const [categories, setCategories] = useState<{ men: any[], women: any[], other: any[] }>({ men: [], women: [], other: [] })
+  const [subCategories, setSubCategories] = useState<any[]>([])
+
+  // Fetch categories and sub-categories when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchCategories()
+      fetchSubCategories()
+    }
+  }, [open])
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/categories/public/dashboard')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          setCategories(data.data)
+          
+          // Debug: Log unique categories
+          const allCategoryNames = [
+            ...(data.data.men?.map(cat => cat.name) || []),
+            ...(data.data.women?.map(cat => cat.name) || []),
+            ...(data.data.other?.map(cat => cat.name) || [])
+          ]
+          const uniqueCategoryNames = Array.from(new Set(allCategoryNames)).sort()
+          console.log('Unique categories:', uniqueCategoryNames)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
+  const fetchSubCategories = async () => {
+    try {
+      console.log('🔍 Fetching sub-categories...')
+      const subCategoriesData = await subCategoryAPI.getAll()
+      console.log('📦 Raw sub-categories data:', subCategoriesData)
+      setSubCategories(subCategoriesData)
+      console.log('✅ Sub-categories set to state:', subCategoriesData)
+    } catch (error) {
+      console.error('❌ Error fetching sub-categories:', error)
+    }
+  }
 
   // Generate unique SKU
   const generateUniqueSku = () => {
@@ -72,11 +129,26 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       baseSku: `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       category: "",
       subCategory: "",
-      collectionType: "general",
+      discountPercentage: "",
       description: "",
+      purpose: "",
+      features: "",
+      materials: "",
+      care: "",
+      reviewRating: "5",
       isActive: true,
     },
   })
+
+  // Reset sub-category when category changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'category') {
+        form.setValue('subCategory', '')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [form])
 
   useEffect(() => {
     if (product) {
@@ -86,8 +158,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         baseSku: product.baseSku,
         category: product.category,
         subCategory: product.subCategory || "",
-        collectionType: product.collectionType || "general",
+        discountPercentage: product.discountPercentage?.toString() || "",
         description: product.description,
+        purpose: product.purpose || "",
+        features: product.features || "",
+        materials: product.materials || "",
+        care: product.care || "",
+        reviewRating: product.reviewRating?.toString() || "5",
         isActive: product.isActive,
       })
       setImages(product.images || [])
@@ -102,8 +179,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         baseSku: generateUniqueSku(),
         category: "",
         subCategory: "",
-        collectionType: "general",
+        discountPercentage: "",
         description: "",
+        purpose: "",
+        features: "",
+        materials: "",
+        care: "",
+        reviewRating: "5",
         isActive: true,
       })
       setImages([])
@@ -343,11 +425,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Clothing">Clothing</SelectItem>
-                            <SelectItem value="Electronics">Electronics</SelectItem>
-                            <SelectItem value="Furniture">Furniture</SelectItem>
-                            <SelectItem value="Books">Books</SelectItem>
-                            <SelectItem value="Sports">Sports</SelectItem>
+                            <SelectItem value="Men">Men</SelectItem>
+                            <SelectItem value="Women">Women</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -389,47 +468,65 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 <FormField
                   control={form.control}
                   name="subCategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sub-Category</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select sub-category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="T-Shirts">T-Shirts</SelectItem>
-                          <SelectItem value="Hoodies">Hoodies</SelectItem>
-                          <SelectItem value="Shorts">Shorts</SelectItem>
-                          <SelectItem value="Jeans">Jeans</SelectItem>
-                          <SelectItem value="Dresses">Dresses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const selectedCategory = form.watch("category")
+                    
+                    // Filter sub-categories based on selected category and remove duplicates
+                    const filteredSubCategories = selectedCategory 
+                      ? subCategories.filter(subCat => subCat.category === selectedCategory)
+                      : subCategories // Show all if no category selected
+                    
+                    // Remove duplicates by grouping by name and taking the first occurrence
+                    const uniqueSubCategories = filteredSubCategories.reduce((acc, subCat) => {
+                      if (!acc.find(item => item.name === subCat.name)) {
+                        acc.push(subCat)
+                      }
+                      return acc
+                    }, [] as typeof filteredSubCategories)
+                    
+                    console.log('🎯 Selected category:', selectedCategory)
+                    console.log('📋 All sub-categories:', subCategories)
+                    console.log('🔍 Filtered sub-categories for', selectedCategory, ':', filteredSubCategories)
+                    console.log('🔍 Unique sub-categories:', uniqueSubCategories)
+                    console.log('🔍 Available categories in sub-categories:', [...new Set(subCategories.map(sc => sc.category))])
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Sub-Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select sub-category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {uniqueSubCategories.map((subCategory) => (
+                              <SelectItem key={subCategory.id} value={subCategory.name}>
+                                {subCategory.name}
+                              </SelectItem>
+                            ))}
+                            {uniqueSubCategories.length === 0 && (
+                              <SelectItem value="no-subcategories" disabled>
+                                {selectedCategory ? `No sub-categories found for ${selectedCategory}` : 'No sub-categories available'}
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
 
                 <FormField
                   control={form.control}
-                  name="collectionType"
+                  name="discountPercentage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Collection Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select collection type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="general">General</SelectItem>
-                          <SelectItem value="men">Men Collection</SelectItem>
-                          <SelectItem value="women">Women Collection</SelectItem>
-                          <SelectItem value="train">Train Collection</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Discount Percentage (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" max="100" step="0.01" placeholder="0.00" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -443,6 +540,76 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea placeholder="Enter product description" rows={4} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="purpose"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Purpose</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter product purpose" rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="features"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Features & Fit</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter product features and fit details" rows={4} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="materials"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Materials</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter product materials" rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="care"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Care Instructions</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter care instructions" rows={3} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reviewRating"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Review Rating (1-5)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="1" max="5" step="0.1" placeholder="5" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
