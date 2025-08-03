@@ -133,13 +133,9 @@ export function ShippingPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="rules" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="rules">Shipping Rules</TabsTrigger>
-          <TabsTrigger value="settings">General Settings</TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
 
-        <TabsContent value="rules" className="space-y-4">
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Shipping Rules</CardTitle>
@@ -229,43 +225,8 @@ export function ShippingPage() {
                     )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>
-                Configure default shipping settings and preferences.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-medium mb-2">Default Settings</h3>
-                  <p className="text-sm text-gray-600">
-                    These settings apply when no specific shipping rule matches.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Default Shipping Cost
-                    </label>
-                    <p className="text-sm text-gray-600">$20.00</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Default Free Shipping Threshold
-                    </label>
-                    <p className="text-sm text-gray-600">$500.00</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <ShippingRuleDialog
         open={dialogOpen}

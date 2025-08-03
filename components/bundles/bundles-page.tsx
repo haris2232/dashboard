@@ -114,8 +114,30 @@ export function BundlesPage() {
       return
     }
 
+    // Validate product count (must be 4 or 6)
+    if (selectedProducts.length !== 4 && selectedProducts.length !== 6) {
+      toast({
+        title: "Error",
+        description: "Bundle must contain exactly 4 or 6 products",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate that all products are from the same category
+    const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
+    const categories = [...new Set(bundleProducts.map(p => p.category))]
+    
+    if (categories.length > 1 || !['Men', 'Women'].includes(categories[0])) {
+      toast({
+        title: "Error",
+        description: "All products in a bundle must be from the same category (Men or Women)",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
-      const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
       const originalPrice = bundleProducts.reduce((sum, product) => sum + product.basePrice, 0)
 
       const bundleData = {
@@ -142,10 +164,10 @@ export function BundlesPage() {
 
       closeDialog()
       loadData()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to save bundle",
+        description: error.response?.data?.error || "Failed to save bundle",
         variant: "destructive",
       })
     }
@@ -289,26 +311,61 @@ export function BundlesPage() {
                 </div>
 
                 <div>
-                  <FormLabel className="text-base font-medium">Select Products</FormLabel>
-                  <div className="mt-2 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                    {products.map((product) => (
-                      <div key={product._id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded">
-                        <Checkbox
-                          checked={selectedProducts.includes(product._id)}
-                          onCheckedChange={() => toggleProductSelection(product._id)}
-                        />
-                        <img
-                          src={product.images[0] || "/placeholder.svg"}
-                          alt={product.title}
-                          className="w-10 h-10 object-cover rounded"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium">{product.title}</div>
-                          <div className="text-sm text-muted-foreground">{formatCurrency(product.basePrice)}</div>
-                        </div>
-                      </div>
-                    ))}
+                  <FormLabel className="text-base font-medium">Select Products (Must be 4 or 6 products from same category)</FormLabel>
+                  
+                              {/* Category Filter */}
+            <div className="mt-2 mb-3">
+              <div className="text-sm font-medium mb-2">Filter by Category:</div>
+              <div className="flex space-x-2">
+                {['Men', 'Women'].map((category) => {
+                  const categoryProducts = products.filter(p => p.category === category)
+                  const selectedCategoryProducts = selectedProducts.filter(id =>
+                    products.find(p => p._id === id)?.category === category
+                  )
+                        
+                        return (
+                          <div key={category} className="flex items-center space-x-2">
+                            <span className="text-sm capitalize">{category}:</span>
+                            <span className="text-sm text-muted-foreground">
+                              {selectedCategoryProducts.length} selected of {categoryProducts.length} available
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
+                  
+                  <div className="mt-2 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                    {products.map((product) => {
+                      const isSelected = selectedProducts.includes(product._id)
+                      const selectedCategoryProducts = selectedProducts.filter(id => 
+                        products.find(p => p._id === id)?.category === product.category
+                      )
+                      const isDisabled = selectedCategoryProducts.length >= 6 && !isSelected && product.category === 'Men'
+                      
+                      return (
+                        <div key={product._id} className={`flex items-center space-x-3 p-2 hover:bg-muted rounded ${isDisabled ? 'opacity-50' : ''}`}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleProductSelection(product._id)}
+                            disabled={isDisabled}
+                          />
+                          <img
+                            src={product.images[0] || "/placeholder.svg"}
+                            alt={product.title}
+                            className="w-10 h-10 object-cover rounded"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium">{product.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {formatCurrency(product.basePrice)} • {product.category}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  
                   {selectedProducts.length > 0 && (
                     <div className="mt-2 p-3 bg-muted rounded-md">
                       <div className="text-sm font-medium">Selected Products Summary:</div>
@@ -320,6 +377,11 @@ export function BundlesPage() {
                             .reduce((sum, p) => sum + p.basePrice, 0),
                         )}
                       </div>
+                      {selectedProducts.length !== 4 && selectedProducts.length !== 6 && (
+                        <div className="text-sm text-red-600 mt-1">
+                          ⚠️ Bundle must contain exactly 4 or 6 products
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

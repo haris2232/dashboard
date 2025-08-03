@@ -45,7 +45,6 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
     name: category?.name || "",
     description: category?.description || "",
     image: category?.image || "",
-    carouselImage: category?.carouselImage || "",
     isActive: category?.isActive ?? true,
     showInCarousel: category?.showInCarousel ?? false,
     carouselOrder: category?.carouselOrder || 0,
@@ -94,7 +93,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
     }
   }
 
-  const handleImageUpload = async (file: File, type: 'image' | 'carouselImage') => {
+  const handleImageUpload = async (file: File, type: 'image') => {
     setUploading(true)
     try {
       console.log('📤 Starting image upload...', { file: file.name, type });
@@ -210,7 +209,6 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
         name: "",
         description: "",
         image: "",
-        carouselImage: "",
         isActive: true,
         showInCarousel: false,
         carouselOrder: 0,
@@ -383,7 +381,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Images</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               {/* Main Image */}
               <div>
                 <Label>Main Image</Label>
@@ -421,49 +419,6 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
                       <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
                       <p className="text-sm text-gray-600">
                         {uploading ? "Uploading..." : "Click to upload main image"}
-                      </p>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Carousel Image */}
-              <div>
-                <Label>Carousel Image</Label>
-                <div className="mt-2 space-y-2">
-                  {formData.carouselImage && (
-                    <div className="relative">
-                      <img
-                        src={formData.carouselImage}
-                        alt="Carousel image"
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => setFormData(prev => ({ ...prev, carouselImage: "" }))}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) handleImageUpload(file, 'carouselImage')
-                      }}
-                      className="hidden"
-                      id="carousel-image-upload"
-                    />
-                    <label htmlFor="carousel-image-upload" className="cursor-pointer">
-                      <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-600">
-                        {uploading ? "Uploading..." : "Click to upload carousel image"}
                       </p>
                     </label>
                   </div>
