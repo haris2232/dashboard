@@ -90,7 +90,8 @@ export function ProductsPage() {
                          product.baseSku.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesCollection = collectionFilter === "all" || 
-                             product.collectionType === collectionFilter
+                             (collectionFilter === "men" && product.category === "Men") ||
+                             (collectionFilter === "women" && product.category === "Women")
     
     return matchesSearch && matchesCollection
   })
@@ -129,8 +130,6 @@ export function ProductsPage() {
               <SelectItem value="all">All Collections</SelectItem>
               <SelectItem value="men">Men Collection</SelectItem>
               <SelectItem value="women">Women Collection</SelectItem>
-              <SelectItem value="train">Train Collection</SelectItem>
-              <SelectItem value="general">General</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -5,12 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { dashboardAPI } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
+import { useCurrency } from "@/lib/currency-context"
 import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle } from "lucide-react"
 
 export function DashboardOverview() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const { formatPrice } = useCurrency()
 
   useEffect(() => {
     fetchStats()
@@ -50,7 +52,7 @@ export function DashboardOverview() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats?.monthlyRevenue || 0)}</div>
+                         <div className="text-2xl font-bold">{formatPrice(stats?.monthlyRevenue || 0)}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="inline h-3 w-3 mr-1" />
               +20.1% from last month
@@ -123,7 +125,7 @@ export function DashboardOverview() {
                     >
                       {order.status}
                     </Badge>
-                    <span className="text-sm font-medium">{formatCurrency(order.total)}</span>
+                                         <span className="text-sm font-medium">{formatPrice(order.total)}</span>
                   </div>
                 </div>
               ))}

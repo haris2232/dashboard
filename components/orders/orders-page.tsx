@@ -11,7 +11,8 @@ import { orderAPI, type Order } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
 import { Search, Package, Eye, Truck, Download, Calendar } from "lucide-react"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
+import { useCurrency } from "@/lib/currency-context"
 
 export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -21,6 +22,7 @@ export function OrdersPage() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const { toast } = useToast()
+  const { formatPrice } = useCurrency()
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
@@ -33,11 +35,34 @@ export function OrdersPage() {
       const data = await orderAPI.getOrders()
       setOrders(data)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch orders",
-        variant: "destructive",
-      })
+      console.error("Error fetching orders:", error);
+      
+      // Handle different error types
+      if (error.status === 401 || error.message.includes("401")) {
+        toast({
+          title: "Authentication Error",
+          description: "Please login again to continue",
+          variant: "destructive",
+        })
+      } else if (error.status === 403 || error.message.includes("403")) {
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to view orders",
+          variant: "destructive",
+        })
+      } else if (error.status === 500 || error.message.includes("500")) {
+        toast({
+          title: "Server Error",
+          description: "Server error occurred. Please try again later",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders. Please try again",
+          variant: "destructive",
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -45,18 +70,62 @@ export function OrdersPage() {
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     try {
-      await orderAPI.updateOrderStatus(orderId, newStatus)
-      toast({
-        title: "Success",
-        description: "Order status updated successfully",
-      })
+      const response = await orderAPI.updateOrderStatus(orderId, newStatus)
+      
+      // Check if email was sent
+      if (response.emailSent) {
+        toast({
+          title: "Success",
+          description: "Order status updated successfully and customer notified via email",
+        })
+      } else if (response.statusChanged) {
+        toast({
+          title: "Success",
+          description: "Order status updated successfully",
+        })
+      } else {
+        toast({
+          title: "Info",
+          description: "Order status unchanged",
+        })
+      }
+      
       fetchOrders()
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update order status",
-        variant: "destructive",
-      })
+      console.error("Error updating order status:", error);
+      
+      // Handle different error types
+      if (error.status === 401 || error.message.includes("401")) {
+        toast({
+          title: "Authentication Error",
+          description: "Please login again to continue",
+          variant: "destructive",
+        })
+      } else if (error.status === 403 || error.message.includes("403")) {
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to update orders",
+          variant: "destructive",
+        })
+      } else if (error.status === 404 || error.message.includes("404")) {
+        toast({
+          title: "Order Not Found",
+          description: "The order you're trying to update doesn't exist",
+          variant: "destructive",
+        })
+      } else if (error.status === 500 || error.message.includes("500")) {
+        toast({
+          title: "Server Error",
+          description: "Server error occurred. Please try again later",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update order status. Please try again",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -69,11 +138,40 @@ export function OrdersPage() {
       })
       fetchOrders()
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to assign tracking information",
-        variant: "destructive",
-      })
+      console.error("Error assigning tracking:", error);
+      
+      // Handle different error types
+      if (error.status === 401 || error.message.includes("401")) {
+        toast({
+          title: "Authentication Error",
+          description: "Please login again to continue",
+          variant: "destructive",
+        })
+      } else if (error.status === 403 || error.message.includes("403")) {
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to update tracking",
+          variant: "destructive",
+        })
+      } else if (error.status === 404 || error.message.includes("404")) {
+        toast({
+          title: "Order Not Found",
+          description: "The order you're trying to update doesn't exist",
+          variant: "destructive",
+        })
+      } else if (error.status === 500 || error.message.includes("500")) {
+        toast({
+          title: "Server Error",
+          description: "Server error occurred. Please try again later",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to assign tracking information. Please try again",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -222,7 +320,7 @@ export function OrdersPage() {
                   </CardDescription>
                 </div>
                 <div className="text-right space-y-2">
-                  <div className="text-lg font-bold">{formatCurrency(order.total)}</div>
+                  <div className="text-lg font-bold">{formatPrice(order.total)}</div>
                   <Badge variant={getStatusColor(order.status)}>{order.status}</Badge>
                 </div>
               </div>
@@ -313,6 +411,7 @@ interface OrderDetailsDialogProps {
 function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDetailsDialogProps) {
   const [trackingNumber, setTrackingNumber] = useState("")
   const [carrier, setCarrier] = useState("")
+  const { formatPrice } = useCurrency()
 
   useEffect(() => {
     if (order) {
@@ -381,7 +480,7 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                     </div>
                     <div className="text-right">
                       <div className="font-medium">Qty: {item.quantity}</div>
-                      <div className="text-sm text-muted-foreground">{formatCurrency(item.price)} each</div>
+                      <div className="text-sm text-muted-foreground">{formatPrice(item.price)} each</div>
                     </div>
                   </div>
                 ))}
@@ -389,7 +488,7 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
               <div className="mt-4 pt-4 border-t">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span>{formatCurrency(order.total)}</span>
+                                      <span>{formatPrice(order.total)}</span>
                 </div>
               </div>
             </CardContent>

@@ -19,7 +19,10 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    const errorMessage = errorData.message || errorData.error || `HTTP error! status: ${response.status}`;
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();
@@ -68,6 +71,7 @@ export interface Product {
   subCategory?: string
   collectionType?: "men" | "women" | "train" | "general"
   description: string
+  discountPercentage?: number
   images: string[]
   isActive: boolean
   createdAt: string
@@ -197,33 +201,7 @@ export interface User {
 
 export interface Settings {
   _id: string
-  storeName: string
   currency: string
-  language: string
-  freeShippingThreshold: number
-  modules: {
-    reviews: boolean
-    coupons: boolean
-    shipping: boolean
-    bundles: boolean
-  }
-  smtp?: {
-    host: string
-    port: number
-    username: string
-    password: string
-    senderName: string
-  }
-  seo?: {
-    title: string
-    description: string
-    keywords: string
-  }
-  contact?: {
-    phone: string
-    address: string
-    email: string
-  }
 }
 
 export interface ShippingRule {
@@ -364,6 +342,7 @@ export const productAPI = {
           subCategory: product.subCategory,
           collectionType: product.collectionType,
           description: product.description,
+          discountPercentage: product.discountPercentage || 0,
           images: product.images || [],
           isActive: product.isActive,
           createdAt: product.createdAt,
@@ -394,6 +373,7 @@ export const productAPI = {
           subCategory: product.subCategory,
           collectionType: product.collectionType,
           description: product.description,
+          discountPercentage: product.discountPercentage || 0,
           images: product.images || [],
           isActive: product.isActive,
           createdAt: product.createdAt,
@@ -541,20 +521,24 @@ export const orderAPI = {
     }
   },
 
-  updateOrderStatus: async (id: string, status: Order["status"]): Promise<Order> => {
+  updateOrderStatus: async (id: string, status: Order["status"]): Promise<{ data: Order; emailSent: boolean; statusChanged: boolean }> => {
     try {
       const response = await apiCall(`/orders/admin/${id}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status }),
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error updating order status:', error);
       // Fallback to mock data
       const index = mockOrders.findIndex((o) => o.id === id);
       if (index === -1) throw new Error("Order not found");
       mockOrders[index].status = status;
-      return mockOrders[index];
+      return { 
+        data: mockOrders[index], 
+        emailSent: false, 
+        statusChanged: true 
+      };
     }
   },
 
@@ -1114,14 +1098,32 @@ export const reviewAPI = {
 // Settings API
 export const settingsAPI = {
   getSettings: async (): Promise<{ data: Settings }> => {
-    await delay(400)
-    return { data: mockSettings }
+    try {
+      const response = await apiCall('/settings/public');
+      return { data: response };
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      // Fallback to mock data if API fails
+      await delay(400);
+      return { data: mockSettings };
+    }
   },
   updateSettings: async (formData: FormData): Promise<Settings> => {
-    await delay(800)
-    const settingsData = JSON.parse(formData.get("settingsData") as string)
-    mockSettings = { ...mockSettings, ...settingsData }
-    return mockSettings
+    try {
+      const settingsData = JSON.parse(formData.get("settingsData") as string)
+      // Use the public currency endpoint for updates
+      const response = await apiCall('/settings/currency', {
+        method: 'PUT',
+        body: JSON.stringify(settingsData),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      // Fallback to mock data if API fails
+      await delay(800);
+      mockSettings = { ...mockSettings, ...JSON.parse(formData.get("settingsData") as string) };
+      return mockSettings;
+    }
   },
 }
 
@@ -1416,33 +1418,7 @@ let mockUsers: User[] = [
 
 let mockSettings: Settings = {
   _id: "1",
-  storeName: "Demo eCommerce Store",
   currency: "USD",
-  language: "en",
-  freeShippingThreshold: 50,
-  modules: {
-    reviews: true,
-    coupons: true,
-    shipping: true,
-    bundles: true,
-  },
-  smtp: {
-    host: "smtp.gmail.com",
-    port: 587,
-    username: "store@example.com",
-    password: "password",
-    senderName: "Demo Store",
-  },
-  seo: {
-    title: "Demo eCommerce Store",
-    description: "Your one-stop shop for quality products",
-    keywords: "ecommerce, shopping, products",
-  },
-  contact: {
-    phone: "+1 (555) 123-4567",
-    address: "123 Main St, City, State 12345",
-    email: "contact@example.com",
-  },
 }
 
 let mockShippingRules: ShippingRule[] = [
