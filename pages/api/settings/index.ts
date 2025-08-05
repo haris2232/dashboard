@@ -8,7 +8,7 @@ let settings = {
 export async function GET() {
   // Try to get settings from backend first
   try {
-    const response = await fetch('http://localhost:5000/api/settings/public')
+    const response = await fetch('http://34.18.0.53/api/settings/public')
     if (response.ok) {
       const backendSettings = await response.json()
       settings = { ...settings, ...backendSettings }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     
     // Also update the backend
     try {
-      const backendResponse = await fetch('http://localhost:5000/api/settings', {
+      const backendResponse = await fetch('http://34.18.0.53/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -81,7 +81,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/categories/public/dashboard')
+      const response = await fetch('http://34.18.0.53/api/categories/public/dashboard')
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.data) {
