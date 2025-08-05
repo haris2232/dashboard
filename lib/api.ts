@@ -1,5 +1,5 @@
 // Real API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.18.0.53/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.18.0.53:5000/api';
 
 // Helper function for API calls
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
