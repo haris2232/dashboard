@@ -244,7 +244,7 @@ const ProductFormScreen = () => {
                     <View key={index} style={styles.imageWrapper}>
                       <Image
                         source={{
-                          uri: imageUri.startsWith("http") ? `http://localhost:3000/${imageUri}` : imageUri,
+                          uri: imageUri.startsWith("http") ? `http://34.18.0.53:3000/${imageUri}` : imageUri,
                         }}
                         style={styles.productImage}
                       />

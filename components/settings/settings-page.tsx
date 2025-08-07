@@ -76,7 +76,7 @@ export function SettingsPage() {
       
       // Also sync with frontend website
       try {
-        await fetch('http://localhost:3000/api/settings', {
+        await fetch('http://34.18.0.53:3000/api/settings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

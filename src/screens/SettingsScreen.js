@@ -147,7 +147,7 @@ const SettingsScreen = () => {
                     {logoImage && (
                       <Image
                         source={{
-                          uri: logoImage.startsWith("http") ? `http://localhost:3000/${logoImage}` : logoImage,
+                          uri: logoImage.startsWith("http") ? `http://34.18.0.53:3000/${logoImage}` : logoImage,
                         }}
                         style={styles.logoImage}
                       />

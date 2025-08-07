@@ -172,7 +172,7 @@ const CategoryScreen = () => {
       <View style={styles.categoryContent}>
         {item.image && (
           <Image
-            source={{ uri: `http://localhost:3000/${item.image}` }}
+            source={{ uri: `http://34.18.0.53:3000/${item.image}` }}
             style={styles.categoryImage}
             resizeMode="cover"
           />
@@ -288,7 +288,7 @@ const CategoryScreen = () => {
                       <Image
                         source={{
                           uri: categoryImage.startsWith("http")
-                            ? `http://localhost:3000/${categoryImage}`
+                            ? `http://34.18.0.53:3000/${categoryImage}`
                             : categoryImage,
                         }}
                         style={styles.selectedImage}

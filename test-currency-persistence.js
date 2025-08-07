@@ -19,7 +19,7 @@ async function testCurrencyPersistence() {
     // Test 3: Check frontend website sync
     console.log('\n3. Checking frontend website...');
     try {
-      const frontendResponse = await fetch('http://localhost:3000/api/settings');
+      const frontendResponse = await fetch('https://athlekt.com/api/settings');
       const frontendSettings = await frontendResponse.json();
       console.log('✅ Frontend currency:', frontendSettings.currency);
     } catch (error) {

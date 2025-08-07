@@ -87,7 +87,7 @@ const ProductListScreen = () => {
       <View style={styles.productContent}>
         {item.images && item.images.length > 0 && (
           <Image
-            source={{ uri: `http://localhost:3000/${item.images[0]}` }}
+            source={{ uri: `http://34.18.0.53:3000/${item.images[0]}` }}
             style={styles.productImage}
             resizeMode="cover"
           />

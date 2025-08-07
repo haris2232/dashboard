@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "latest",
     "@hookform/resolvers": "latest",
     "@radix-ui/react-accordion": "latest",
@@ -66,9 +67,9 @@
     "next": "14.2.16",
     "next-themes": "latest",
     "path": "latest",
-    "react": "^18",
+    "react": "^18.3.1",
     "react-day-picker": "latest",
-    "react-dom": "^18",
+    "react-dom": "^18.3.1",
     "react-hook-form": "latest",
     "react-native": "latest",
     "react-native-chart-kit": "latest",
@@ -78,6 +79,7 @@
     "react-native-safe-area-context": "latest",
     "react-native-screens": "latest",
     "react-native-svg": "latest",
+    "react-native-web": "^0.20.0",
     "react-resizable-panels": "latest",
     "recharts": "latest",
     "sonner": "latest",
