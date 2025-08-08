@@ -236,7 +236,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                 name="minOrderAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Min Order Amount ($)</FormLabel>
+                    <FormLabel>Min Order Amount (AED)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="0" {...field} />
                     </FormControl>
@@ -250,7 +250,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                 name="maxOrderAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Order Amount ($)</FormLabel>
+                    <FormLabel>Max Order Amount (AED)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="100" {...field} />
                     </FormControl>
@@ -266,7 +266,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                 name="shippingCost"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Shipping Cost ($)</FormLabel>
+                    <FormLabel>Shipping Cost (AED)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="9.99" {...field} />
                     </FormControl>
@@ -280,7 +280,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                 name="freeShippingAt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Free Shipping At ($)</FormLabel>
+                    <FormLabel>Free Shipping At (AED)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="50" {...field} />
                     </FormControl>

@@ -209,7 +209,7 @@ export function CustomersPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Total Spent:</span>
-                  <span className="font-medium">${customer.totalSpent?.toFixed(2) || "0.00"}</span>
+                  <span className="font-medium">AED{customer.totalSpent?.toFixed(2) || "0.00"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Email Verified:</span>

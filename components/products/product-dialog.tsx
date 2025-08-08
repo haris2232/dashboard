@@ -441,7 +441,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     name="basePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Base Price ($)</FormLabel>
+                        <FormLabel>Base Price (AED)</FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
@@ -953,7 +953,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             {/* Final Price Display */}
                             <div className="col-span-2 text-right">
                               <div className="text-sm font-medium">
-                                ${variant.priceOverride || form.getValues("basePrice") || "0"}
+                                AED{variant.priceOverride || form.getValues("basePrice") || "0"}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {variant.isActive ? "Active" : "Inactive"}

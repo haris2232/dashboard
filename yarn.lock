@@ -1302,15 +1302,10 @@
   resolved "https://registry.npmjs.org/@next/env/-/env-14.2.16.tgz"
   integrity sha512-fLrX5TfJzHCbnZ9YUSnGW63tMV3L4nSfhgOQ0iCcX21Pt+VSTDuaLsSuL8J/2XAiVA5AnzvXDpf6pMs60QxOag==
 
-"@next/swc-linux-x64-gnu@14.2.16":
+"@next/swc-win32-x64-msvc@14.2.16":
   version "14.2.16"
-  resolved "https://registry.npmjs.org/@next/swc-linux-x64-gnu/-/swc-linux-x64-gnu-14.2.16.tgz"
-  integrity sha512-9AGcX7VAkGbc5zTSa+bjQ757tkjr6C/pKS7OK8cX7QEiK6MHIIezBLcQ7gQqbDW2k5yaqba2aDtaBeyyZh1i6Q==
-
-"@next/swc-linux-x64-musl@14.2.16":
-  version "14.2.16"
-  resolved "https://registry.npmjs.org/@next/swc-linux-x64-musl/-/swc-linux-x64-musl-14.2.16.tgz"
-  integrity sha512-Klgeagrdun4WWDaOizdbtIIm8khUDQJ/5cRzdpXHfkbY91LxBXeejL4kbZBrpR/nmgRrQvmz4l3OtttNVkz2Sg==
+  resolved "https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-14.2.16.tgz"
+  integrity sha512-OA7NtfxgirCjfqt+02BqxC3MIgM/JaGjw9tOe4fyZgPsqfseNiMPnCRP44Pfs+Gpo9zPN+SXaFsgP6vk8d571A==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -4692,15 +4687,10 @@ lighthouse-logger@^1.0.0:
     debug "^2.6.9"
     marky "^1.2.2"
 
-lightningcss-linux-x64-gnu@1.27.0:
+lightningcss-win32-x64-msvc@1.27.0:
   version "1.27.0"
-  resolved "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.27.0.tgz"
-  integrity sha512-Dk/jovSI7qqhJDiUibvaikNKI2x6kWPN79AQiD/E/KeQWMjdGe9kw51RAgoWFDi0coP4jinaH14Nrt/J8z3U4A==
-
-lightningcss-linux-x64-musl@1.27.0:
-  version "1.27.0"
-  resolved "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.27.0.tgz"
-  integrity sha512-QKjTxXm8A9s6v9Tg3Fk0gscCQA1t/HMoF7Woy1u68wCk5kS4fR+q3vXa1p3++REW784cRAtkYKrPy6JKibrEZA==
+  resolved "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.27.0.tgz"
+  integrity sha512-/OJLj94Zm/waZShL8nB5jsNj3CfNATLCTyFxZyouilfTmSoLDX7VlVAmhPHoZWVFp4vdmoiEbPEYC8HID3m6yw==
 
 lightningcss@~1.27.0:
   version "1.27.0"

@@ -178,7 +178,7 @@ export function ProductsPage() {
                           -{product.discountPercentage}%
                         </Badge>
                       )}
-                      <span className="text-2xl font-bold">${finalPrice.toFixed(2)}</span>
+                      <span className="text-2xl font-bold">AED{finalPrice.toFixed(2)}</span>
                     </div>
                     <Badge variant={product.isActive ? "default" : "secondary"}>
                       {product.isActive ? "Active" : "Inactive"}

@@ -128,7 +128,7 @@ export function CouponsPage() {
                  <div>
                    <CardTitle className="text-lg font-mono">{coupon.code}</CardTitle>
                    <CardDescription>
-                     {coupon.type === "percentage" ? `${coupon.value}% off` : `$${coupon.value} off`}
+                     {coupon.type === "percentage" ? `AED{coupon.value}% off` : `AED${coupon.value} off`}
                    </CardDescription>
                  </div>
                  <div className="flex space-x-1">
@@ -169,13 +169,13 @@ export function CouponsPage() {
                  {coupon.minAmount && (
                    <div className="flex justify-between">
                      <span className="text-sm text-muted-foreground">Min Amount:</span>
-                     <span className="text-sm">${coupon.minAmount}</span>
+                     <span className="text-sm">AED{coupon.minAmount}</span>
                    </div>
                  )}
                  {coupon.maxDiscount && (
                    <div className="flex justify-between">
                      <span className="text-sm text-muted-foreground">Max Discount:</span>
-                     <span className="text-sm">${coupon.maxDiscount}</span>
+                     <span className="text-sm">AED{coupon.maxDiscount}</span>
                    </div>
                  )}
                  {coupon.expiresAt && (
