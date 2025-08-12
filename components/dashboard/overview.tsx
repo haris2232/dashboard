@@ -7,7 +7,7 @@ import { dashboardAPI } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { formatDate } from "@/lib/utils"
 import { useCurrency } from "@/lib/currency-context"
-import { Package, ShoppingCart, Users, DollarSign, TrendingUp, AlertTriangle } from "lucide-react"
+import { Package, ShoppingCart, Users,  TrendingUp, AlertTriangle } from "lucide-react"
 
 export function DashboardOverview() {
   const [stats, setStats] = useState<any>(null)
@@ -49,7 +49,7 @@ export function DashboardOverview() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            
           </CardHeader>
           <CardContent>
                          <div className="text-2xl font-bold">{formatPrice(stats?.monthlyRevenue || 0)}</div>

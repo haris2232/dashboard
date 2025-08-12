@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { bundleAPI, productAPI, type Bundle, type Product } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Edit, Trash2, Package, DollarSign, Calendar, Percent } from "lucide-react"
+import { Plus, Edit, Trash2, Package, Calendar, Percent } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 const bundleSchema = z.object({
@@ -114,30 +114,30 @@ export function BundlesPage() {
       return
     }
 
-    // Validate product count (must be 4 or 6)
-    if (selectedProducts.length !== 4 && selectedProducts.length !== 6) {
+    // Validate product count (must be between 2 and 6)
+    if (selectedProducts.length < 2 || selectedProducts.length > 6) {
       toast({
         title: "Error",
-        description: "Bundle must contain exactly 4 or 6 products",
+        description: "Bundle must contain between 2 and 6 products",
         variant: "destructive",
       })
       return
     }
 
-    // Validate that all products are from the same category
-    const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
-    const categories = [...new Set(bundleProducts.map(p => p.category))]
-    
-    if (categories.length > 1 || !['Men', 'Women'].includes(categories[0])) {
-      toast({
-        title: "Error",
-        description: "All products in a bundle must be from the same category (Men or Women)",
-        variant: "destructive",
-      })
-      return
-    }
+    // Remove category check
+    // const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
+    // const categories = [...new Set(bundleProducts.map(p => p.category))]
+    // if (categories.length > 1 || !['Men', 'Women'].includes(categories[0])) {
+    //   toast({
+    //     title: "Error",
+    //     description: "All products in a bundle must be from the same category (Men or Women)",
+    //     variant: "destructive",
+    //   })
+    //   return
+    // }
 
     try {
+      const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
       const originalPrice = bundleProducts.reduce((sum, product) => sum + product.basePrice, 0)
 
       const bundleData = {
@@ -256,7 +256,7 @@ export function BundlesPage() {
                     name="bundlePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Bundle Price ($)</FormLabel>
+                        <FormLabel>Bundle Price </FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
@@ -311,7 +311,9 @@ export function BundlesPage() {
                 </div>
 
                 <div>
-                  <FormLabel className="text-base font-medium">Select Products (Must be 4 or 6 products from same category)</FormLabel>
+                  <FormLabel className="text-base font-medium">
+                    Select Products (Must be 2 to 6 products)
+                  </FormLabel>
                   
                               {/* Category Filter */}
             <div className="mt-2 mb-3">
@@ -377,11 +379,11 @@ export function BundlesPage() {
                             .reduce((sum, p) => sum + p.basePrice, 0),
                         )}
                       </div>
-                      {selectedProducts.length !== 4 && selectedProducts.length !== 6 && (
+                      {selectedProducts.length < 2 || selectedProducts.length > 6 ? (
                         <div className="text-sm text-red-600 mt-1">
-                          ⚠️ Bundle must contain exactly 4 or 6 products
+                          ⚠️ Bundle must contain between 2 and 6 products
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -500,7 +502,7 @@ export function BundlesPage() {
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        
                         <span>Created: {formatDate(bundle.createdAt)}</span>
                       </div>
                       <div className="flex items-center gap-2">
