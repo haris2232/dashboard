@@ -63,7 +63,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   const formatPrice = (amount: number): string => {
     if (currency === 'AED') {
-      return new Intl.NumberFormat('ar-AE', {
+      return new Intl.NumberFormat('en-AE', {
         style: 'currency',
         currency: 'AED',
       }).format(amount)

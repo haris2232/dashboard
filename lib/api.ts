@@ -651,34 +651,85 @@ export const dashboardAPI = {
 
       // Get low stock products (stock < 10)
       const lowStockProducts = products.filter((p: Product) => p.variants.some((v: ProductVariant) => v.stock < 10))
+      
+      // Calculate low stock count
+      const lowStockCount = products.reduce((count: number, product: Product) => {
+        return count + product.variants.filter((v: ProductVariant) => v.stock < 10).length
+      }, 0)
 
       // Get real orders from backend
       const ordersResponse = await apiCall('/orders/admin/all').catch(() => ({ data: [] }));
       const realOrders = ordersResponse.data || [];
       
       // Get real customers from backend
-      const customersResponse = await apiCall('/users/admin/all').catch(() => ({ data: [] }));
+      const customersResponse = await apiCall('/customers').catch(() => ({ data: [] }));
       const realCustomers = customersResponse.data || [];
       
-      return {
-        totalProducts: products.length,
-        totalOrders: realOrders.length,
-        totalCustomers: realCustomers.length, // Now using real customers
-        totalStock,
-        monthlyRevenue: realOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0),
-        recentOrders: realOrders.slice(0, 5).map((order: any) => ({
-          id: order._id,
-          orderNumber: order.orderNumber,
-          customer: {
-            name: order.customer.name,
-            email: order.customer.email,
-          },
-          total: order.total,
-          status: order.status,
-          createdAt: order.createdAt,
-        })),
-        lowStockProducts: lowStockProducts,
-      }
+      // Calculate current month and previous month data
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+      
+      // Current month orders
+      const currentMonthOrders = realOrders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt)
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear
+      })
+      
+      // Previous month orders
+      const previousMonthOrders = realOrders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt)
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+        return orderDate.getMonth() === prevMonth && orderDate.getFullYear() === prevYear
+      })
+      
+      // Calculate revenue percentages
+      const currentMonthRevenue = currentMonthOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0)
+      const previousMonthRevenue = previousMonthOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0)
+      const revenuePercentage = previousMonthRevenue > 0 ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue * 100) : 0
+      
+      // Calculate order percentages
+      const currentMonthOrderCount = currentMonthOrders.length
+      const previousMonthOrderCount = previousMonthOrders.length
+      const orderPercentage = previousMonthOrderCount > 0 ? ((currentMonthOrderCount - previousMonthOrderCount) / previousMonthOrderCount * 100) : 0
+      
+      // Calculate customer growth (simplified - assuming new customers this month)
+      const currentMonthCustomers = realCustomers.filter((customer: any) => {
+        const customerDate = new Date(customer.createdAt)
+        return customerDate.getMonth() === currentMonth && customerDate.getFullYear() === currentYear
+      })
+      const previousMonthCustomers = realCustomers.filter((customer: any) => {
+        const customerDate = new Date(customer.createdAt)
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+        return customerDate.getMonth() === prevMonth && customerDate.getFullYear() === prevYear
+      })
+      const customerPercentage = previousMonthCustomers.length > 0 ? ((currentMonthCustomers.length - previousMonthCustomers.length) / previousMonthCustomers.length * 100) : 0
+      
+              return {
+          totalProducts: products.length,
+          totalOrders: realOrders.length,
+          totalCustomers: realCustomers.length,
+          totalStock,
+          lowStockCount,
+          monthlyRevenue: currentMonthRevenue,
+          revenuePercentage: Math.round(revenuePercentage * 10) / 10, // Round to 1 decimal
+          orderPercentage: Math.round(orderPercentage * 10) / 10,
+          customerPercentage: Math.round(customerPercentage * 10) / 10,
+          recentOrders: realOrders.slice(0, 5).map((order: any) => ({
+            id: order._id,
+            orderNumber: order.orderNumber,
+            customer: {
+              name: order.customer.name,
+              email: order.customer.email,
+            },
+            total: order.total,
+            status: order.status,
+            createdAt: order.createdAt,
+          })),
+          lowStockProducts: lowStockProducts,
+        }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
       // Fallback to mock data if backend fails
@@ -690,15 +741,61 @@ export const dashboardAPI = {
       // Try to get real orders and customers even in fallback
       const ordersResponse = await apiCall('/orders/admin/all').catch(() => ({ data: [] }));
       const realOrders = ordersResponse.data || [];
-      const customersResponse = await apiCall('/users/admin/all').catch(() => ({ data: [] }));
+      const customersResponse = await apiCall('/customers').catch(() => ({ data: [] }));
       const realCustomers = customersResponse.data || [];
+      
+      // Calculate low stock count for fallback
+      const lowStockCount = mockProducts.reduce((count: number, product: Product) => {
+        return count + product.variants.filter((v: ProductVariant) => v.stock < 10).length
+      }, 0)
+      
+      // Calculate percentages for fallback data
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+      
+      const currentMonthOrders = realOrders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt)
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear
+      })
+      
+      const previousMonthOrders = realOrders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt)
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+        return orderDate.getMonth() === prevMonth && orderDate.getFullYear() === prevYear
+      })
+      
+      const currentMonthRevenue = currentMonthOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0)
+      const previousMonthRevenue = previousMonthOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0)
+      const revenuePercentage = previousMonthRevenue > 0 ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue * 100) : 0
+      
+      const currentMonthOrderCount = currentMonthOrders.length
+      const previousMonthOrderCount = previousMonthOrders.length
+      const orderPercentage = previousMonthOrderCount > 0 ? ((currentMonthOrderCount - previousMonthOrderCount) / previousMonthOrderCount * 100) : 0
+      
+      const currentMonthCustomers = realCustomers.filter((customer: any) => {
+        const customerDate = new Date(customer.createdAt)
+        return customerDate.getMonth() === currentMonth && customerDate.getFullYear() === currentYear
+      })
+      const previousMonthCustomers = realCustomers.filter((customer: any) => {
+        const customerDate = new Date(customer.createdAt)
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+        return customerDate.getMonth() === prevMonth && customerDate.getFullYear() === prevYear
+      })
+      const customerPercentage = previousMonthCustomers.length > 0 ? ((currentMonthCustomers.length - previousMonthCustomers.length) / previousMonthCustomers.length * 100) : 0
       
       return {
         totalProducts: mockProducts.length,
         totalOrders: realOrders.length || mockOrders.length,
         totalCustomers: realCustomers.length || mockCustomers.length,
         totalStock,
-        monthlyRevenue: realOrders.length ? realOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0) : mockOrders.reduce((sum: number, order: Order) => sum + order.total, 0),
+        lowStockCount,
+        monthlyRevenue: currentMonthRevenue || mockOrders.reduce((sum: number, order: Order) => sum + order.total, 0),
+        revenuePercentage: Math.round(revenuePercentage * 10) / 10,
+        orderPercentage: Math.round(orderPercentage * 10) / 10,
+        customerPercentage: Math.round(customerPercentage * 10) / 10,
         recentOrders: realOrders.length ? realOrders.slice(0, 5).map((order: any) => ({
           id: order._id,
           orderNumber: order.orderNumber,

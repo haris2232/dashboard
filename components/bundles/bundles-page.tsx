@@ -114,37 +114,30 @@ export function BundlesPage() {
       return
     }
 
-    // Validate product count (must be 4 or 6)
-    if (selectedProducts.length !== 4 && selectedProducts.length !== 6) {
+    // Validate product count (must be at least 2)
+    if (selectedProducts.length < 2) {
       toast({
         title: "Error",
-        description: "Bundle must contain exactly 4 or 6 products",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate that all products are from the same category
-    const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
-    const categories = [...new Set(bundleProducts.map(p => p.category))]
-    
-    if (categories.length > 1 || !['Men', 'Women'].includes(categories[0])) {
-      toast({
-        title: "Error",
-        description: "All products in a bundle must be from the same category (Men or Women)",
+        description: "Bundle must contain at least 2 products",
         variant: "destructive",
       })
       return
     }
 
     try {
+      const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
       const originalPrice = bundleProducts.reduce((sum, product) => sum + product.basePrice, 0)
+      
+      // Determine category based on selected products
+      const categories = [...new Set(bundleProducts.map(p => p.category))]
+      const category = categories.length === 1 ? categories[0].toLowerCase() : 'mixed'
 
       const bundleData = {
         ...values,
         bundlePrice: Number.parseFloat(values.bundlePrice),
         products: selectedProducts, // Send just the product IDs
         originalPrice,
+        category, // Set the category
         createdAt: editingBundle?.createdAt || new Date().toISOString(),
       }
 
@@ -311,7 +304,7 @@ export function BundlesPage() {
                 </div>
 
                 <div>
-                  <FormLabel className="text-base font-medium">Select Products (Must be 4 or 6 products from same category)</FormLabel>
+                  <FormLabel className="text-base font-medium">Select Products (Must be at least 2 products from any category)</FormLabel>
                   
                               {/* Category Filter */}
             <div className="mt-2 mb-3">
@@ -341,7 +334,7 @@ export function BundlesPage() {
                       const selectedCategoryProducts = selectedProducts.filter(id => 
                         products.find(p => p._id === id)?.category === product.category
                       )
-                      const isDisabled = selectedCategoryProducts.length >= 6 && !isSelected && product.category === 'Men'
+                      const isDisabled = false // Allow unlimited products from any category
                       
                       return (
                         <div key={product._id} className={`flex items-center space-x-3 p-2 hover:bg-muted rounded ${isDisabled ? 'opacity-50' : ''}`}>
@@ -377,9 +370,9 @@ export function BundlesPage() {
                             .reduce((sum, p) => sum + p.basePrice, 0),
                         )}
                       </div>
-                      {selectedProducts.length !== 4 && selectedProducts.length !== 6 && (
+                      {selectedProducts.length < 2 && (
                         <div className="text-sm text-red-600 mt-1">
-                          ⚠️ Bundle must contain exactly 4 or 6 products
+                          ⚠️ Bundle must contain at least 2 products
                         </div>
                       )}
                     </div>

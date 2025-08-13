@@ -52,10 +52,10 @@ export function DashboardOverview() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-                         <div className="text-2xl font-bold">{formatPrice(stats?.monthlyRevenue || 0)}</div>
+            <div className="text-2xl font-bold">{formatPrice(stats?.monthlyRevenue || 0)}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="inline h-3 w-3 mr-1" />
-              +20.1% from last month
+              {stats?.revenuePercentage > 0 ? '+' : ''}{stats?.revenuePercentage || 0}% from last month
             </p>
           </CardContent>
         </Card>
@@ -67,7 +67,12 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalProducts || 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.totalStock || 0} total variants in stock</p>
+            <p className="text-xs text-muted-foreground">
+              {stats?.totalStock || 0} total variants in stock
+              {stats?.lowStockCount > 0 && (
+                <span className="text-orange-600 ml-1">• {stats.lowStockCount} low stock</span>
+              )}
+            </p>
           </CardContent>
         </Card>
 
@@ -78,7 +83,9 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalOrders || 0}</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
+            <p className="text-xs text-muted-foreground">
+              {stats?.orderPercentage > 0 ? '+' : ''}{stats?.orderPercentage || 0}% from last month
+            </p>
           </CardContent>
         </Card>
 
@@ -89,7 +96,9 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalCustomers || 0}</div>
-            <p className="text-xs text-muted-foreground">+8% from last month</p>
+            <p className="text-xs text-muted-foreground">
+              {stats?.customerPercentage > 0 ? '+' : ''}{stats?.customerPercentage || 0}% from last month
+            </p>
           </CardContent>
         </Card>
       </div>
