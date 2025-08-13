@@ -15,6 +15,7 @@ interface Customer {
   _id: string
   name: string
   email: string
+  dateOfBirth?: string
   totalOrders: number
   totalSpent: number
   isActive: boolean
@@ -216,6 +217,12 @@ export function CustomersPage() {
                   <Badge variant={customer.isEmailVerified ? "default" : "secondary"}>
                     {customer.isEmailVerified ? "Yes" : "No"}
                   </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Date of Birth:</span>
+                  <span className="text-sm">
+                    {customer.dateOfBirth ? new Date(customer.dateOfBirth).toLocaleDateString() : "Not provided"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Joined:</span>
