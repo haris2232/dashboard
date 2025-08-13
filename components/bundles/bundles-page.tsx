@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { bundleAPI, productAPI, type Bundle, type Product } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Edit, Trash2, Package, DollarSign, Calendar, Percent } from "lucide-react"
+import { Plus, Edit, Trash2, Package, Calendar, Percent } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 const bundleSchema = z.object({
@@ -249,7 +249,7 @@ export function BundlesPage() {
                     name="bundlePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Bundle Price ($)</FormLabel>
+                        <FormLabel>Bundle Price </FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
@@ -374,7 +374,7 @@ export function BundlesPage() {
                         <div className="text-sm text-red-600 mt-1">
                           ⚠️ Bundle must contain at least 2 products
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -493,7 +493,7 @@ export function BundlesPage() {
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        
                         <span>Created: {formatDate(bundle.createdAt)}</span>
                       </div>
                       <div className="flex items-center gap-2">

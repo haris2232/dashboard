@@ -200,16 +200,16 @@ export function ShippingPage() {
                       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                           <span className="text-gray-600">Shipping Cost:</span>
-                          <p className="font-medium">${rule.shippingCost}</p>
+                          <p className="font-medium">AED {rule.shippingCost}</p>
                     </div>
                       <div>
                           <span className="text-gray-600">Free Shipping At:</span>
-                          <p className="font-medium">${rule.freeShippingAt}</p>
+                          <p className="font-medium">AED {rule.freeShippingAt}</p>
                       </div>
                       <div>
                           <span className="text-gray-600">Order Range:</span>
                           <p className="font-medium">
-                            ${rule.minOrderAmount} - ${rule.maxOrderAmount}
+                            AED {rule.minOrderAmount} - AED {rule.maxOrderAmount}
                           </p>
                         </div>
                       <div>
