@@ -306,15 +306,15 @@ export function BundlesPage() {
                 <div>
                   <FormLabel className="text-base font-medium">Select Products (Must be at least 2 products from any category)</FormLabel>
                   
-                  {/* Category Filter */}
-                  <div className="mt-2 mb-3">
-                    <div className="text-sm font-medium mb-2">Filter by Category:</div>
-                    <div className="flex space-x-2">
-                      {['Men', 'Women'].map((category) => {
-                        const categoryProducts = products.filter(p => p.category === category)
-                        const selectedCategoryProducts = selectedProducts.filter(id =>
-                          products.find(p => p._id === id)?.category === category
-                        )
+                              {/* Category Filter */}
+            <div className="mt-2 mb-3">
+              <div className="text-sm font-medium mb-2">Filter by Category:</div>
+              <div className="flex space-x-2">
+                {['Men', 'Women'].map((category) => {
+                  const categoryProducts = products.filter(p => p.category === category)
+                  const selectedCategoryProducts = selectedProducts.filter(id =>
+                    products.find(p => p._id === id)?.category === category
+                  )
                         
                         return (
                           <div key={category} className="flex items-center space-x-2">

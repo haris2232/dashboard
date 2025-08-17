@@ -74,6 +74,7 @@ export interface Product {
   discountPercentage?: number
   images: string[]
   isActive: boolean
+  isProductHighlight?: boolean
   createdAt: string
   // Variation options
   sizeOptions: string[]

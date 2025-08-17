@@ -32,6 +32,8 @@ const formSchema = z.object({
   care: z.string().optional(),
   reviewRating: z.string().optional(),
   isActive: z.boolean(),
+  isProductHighlight: z.boolean(),
+  highlightImageIndex: z.number().min(0).optional(),
 })
 
 interface ProductDialogProps {
@@ -70,6 +72,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const { toast } = useToast()
   const [categories, setCategories] = useState<{ men: any[], women: any[], other: any[] }>({ men: [], women: [], other: [] })
   const [subCategories, setSubCategories] = useState<any[]>([])
+  const [highlightImageIndex, setHighlightImageIndex] = useState<number>(0)
 
   // Fetch categories and sub-categories when dialog opens
   useEffect(() => {
@@ -137,6 +140,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       care: "",
       reviewRating: "5",
       isActive: true,
+      isProductHighlight: false,
+      highlightImageIndex: 0,
     },
   })
 
@@ -166,7 +171,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: product.care || "",
         reviewRating: product.reviewRating?.toString() || "5",
         isActive: product.isActive,
+        isProductHighlight: product.isProductHighlight || false,
+        highlightImageIndex: product.highlightImageIndex || 0,
       })
+      setHighlightImageIndex(product.highlightImageIndex || 0)
       setImages(product.images || [])
       setSizeOptions(product.sizeOptions)
       setColorOptions(product.colorOptions)
@@ -187,7 +195,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: "",
         reviewRating: "5",
         isActive: true,
+        isProductHighlight: false,
+        highlightImageIndex: 0,
       })
+      setHighlightImageIndex(0)
       setImages([])
       setImageFiles([])
       setSizeOptions([])
@@ -631,6 +642,65 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="isProductHighlight"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Product Highlight</FormLabel>
+                        <div className="text-sm text-muted-foreground">Show this product in the highlight section on the website</div>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Highlight Image Selection - Only show if Product Highlight is enabled */}
+                {form.watch("isProductHighlight") && images.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="highlightImageIndex"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel className="text-base">Highlight Image</FormLabel>
+                        <div className="text-sm text-muted-foreground">Select which image to show in the highlight section</div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {images.map((image, index) => (
+                            <div
+                              key={index}
+                              className={`relative cursor-pointer rounded-lg border-2 transition-all ${
+                                field.value === index 
+                                  ? 'border-blue-500 bg-blue-50' 
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                              onClick={() => field.onChange(index)}
+                            >
+                              <div className="aspect-square relative">
+                                <img
+                                  src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
+                                  alt={`Product image ${index + 1}`}
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                                {field.value === index && (
+                                  <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
+                                    <Star className="h-6 w-6 text-blue-600 fill-blue-600" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2 text-center">
+                                <span className="text-xs font-medium">Image {index + 1}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="images" className="space-y-6">

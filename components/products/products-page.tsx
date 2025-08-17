@@ -180,9 +180,17 @@ export function ProductsPage() {
                       )}
                       <span className="text-2xl font-bold">AED{finalPrice.toFixed(2)}</span>
                     </div>
-                    <Badge variant={product.isActive ? "default" : "secondary"}>
-                      {product.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex space-x-2">
+                      <Badge variant={product.isActive ? "default" : "secondary"}>
+                        {product.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      {product.isProductHighlight && (
+                        <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                          <Star className="h-3 w-3 mr-1" />
+                          Highlight
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-sm">
