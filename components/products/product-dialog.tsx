@@ -693,6 +693,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                               </div>
                               <div className="p-2 text-center">
                                 <span className="text-xs font-medium">Image {index + 1}</span>
+                                {field.value === index && (
+                                  <div className="mt-1">
+                                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                                      <Star className="h-3 w-3 mr-1" />
+                                      Highlighted
+                                    </Badge>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
