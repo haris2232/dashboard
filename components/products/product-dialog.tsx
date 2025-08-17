@@ -18,6 +18,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { X, Plus, Star, Upload, Palette, ImageIcon, Trash2, MoveUp, MoveDown } from "lucide-react"
 import { subCategoryAPI } from "@/lib/subCategoryAPI"
 
+// ✅ FIX: API ka base URL yahan define karein taake aasani se badla ja sake.
+const API_BASE_URL = "https://athlekt.com/backendnew";
+
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   basePrice: z.string().min(1, "Price is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Price must be a positive number"),
@@ -73,6 +76,20 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [categories, setCategories] = useState<{ men: any[], women: any[], other: any[] }>({ men: [], women: [], other: [] })
   const [subCategories, setSubCategories] = useState<any[]>([])
   const [highlightImageIndex, setHighlightImageIndex] = useState<number>(0)
+  
+  // ✅ FIX: Image URL ko theek se format karne ke liye helper function.
+  // Yeh function full URL aur relative paths dono ko handle karega.
+  const getFullImageUrl = (url: string | undefined): string => {
+      if (!url) {
+        return ""; // Agar URL nahi hai to empty string return karein.
+      }
+      // Agar URL pehle se hi 'http' se shuru ho raha hai, to usay wese hi rehne dein.
+      if (url.startsWith('http')) {
+        return url;
+      }
+      // Warna, base URL ke saath jor dein, aur double slash (//) se bachne ka khayal rakhein.
+      return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
+  };
 
   // Fetch categories and sub-categories when dialog opens
   useEffect(() => {
@@ -84,20 +101,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://34.18.0.53:5000/api/categories/public/dashboard')
+      const response = await fetch(`${API_BASE_URL}/api/categories/public/dashboard`)
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.data) {
           setCategories(data.data)
-          
-          // Debug: Log unique categories
-          const allCategoryNames = [
-            ...(data.data.men?.map(cat => cat.name) || []),
-            ...(data.data.women?.map(cat => cat.name) || []),
-            ...(data.data.other?.map(cat => cat.name) || [])
-          ]
-          const uniqueCategoryNames = Array.from(new Set(allCategoryNames)).sort()
-          console.log('Unique categories:', uniqueCategoryNames)
         }
       }
     } catch (error) {
@@ -107,11 +115,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
   const fetchSubCategories = async () => {
     try {
-      console.log('🔍 Fetching sub-categories...')
       const subCategoriesData = await subCategoryAPI.getAll()
-      console.log('📦 Raw sub-categories data:', subCategoriesData)
       setSubCategories(subCategoriesData)
-      console.log('✅ Sub-categories set to state:', subCategoriesData)
     } catch (error) {
       console.error('❌ Error fetching sub-categories:', error)
     }
@@ -240,14 +245,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
     try {
       setUploadingImages(true)
-      
-      // Convert FileList to File array
       const fileArray = Array.from(files)
-      
-      // Upload images to backend
       const uploadedUrls = await productAPI.uploadImages(fileArray)
-      
-      // Add new images to state
       setImages(prev => [...prev, ...uploadedUrls])
       
       toast({
@@ -316,30 +315,19 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
   const validateForm = () => {
     const errors: string[] = []
-
-    // Check required fields
     if (!form.getValues("title")) errors.push("Product title is required")
     if (!form.getValues("basePrice")) errors.push("Base price is required")
     if (!form.getValues("baseSku")) errors.push("Base SKU is required")
     if (!form.getValues("category")) errors.push("Category is required")
-
-    // Check images
     if (images.length === 0) errors.push("At least one product image is required")
-
-    // Check size options
     if (sizeOptions.length === 0) errors.push("Please add at least one size option")
-
-    // Check color options
     if (colorOptions.length === 0) errors.push("Please add at least one color option")
-
     return errors
   }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true)
-
-      // Validate form
       const validationErrors = validateForm()
       if (validationErrors.length > 0) {
         toast({
@@ -481,25 +469,16 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   name="subCategory"
                   render={({ field }) => {
                     const selectedCategory = form.watch("category")
-                    
-                    // Filter sub-categories based on selected category and remove duplicates
                     const filteredSubCategories = selectedCategory 
                       ? subCategories.filter(subCat => subCat.category === selectedCategory)
-                      : subCategories // Show all if no category selected
+                      : subCategories
                     
-                    // Remove duplicates by grouping by name and taking the first occurrence
                     const uniqueSubCategories = filteredSubCategories.reduce((acc, subCat) => {
                       if (!acc.find(item => item.name === subCat.name)) {
                         acc.push(subCat)
                       }
                       return acc
                     }, [] as typeof filteredSubCategories)
-                    
-                    console.log('🎯 Selected category:', selectedCategory)
-                    console.log('📋 All sub-categories:', subCategories)
-                    console.log('🔍 Filtered sub-categories for', selectedCategory, ':', filteredSubCategories)
-                    console.log('🔍 Unique sub-categories:', uniqueSubCategories)
-                    console.log('🔍 Available categories in sub-categories:', [...new Set(subCategories.map(sc => sc.category))])
                     
                     return (
                       <FormItem>
@@ -659,7 +638,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   )}
                 />
 
-                {/* Highlight Image Selection - Only show if Product Highlight is enabled */}
                 {form.watch("isProductHighlight") && images.length > 0 && (
                   <FormField
                     control={form.control}
@@ -680,8 +658,9 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                               onClick={() => field.onChange(index)}
                             >
                               <div className="aspect-square relative">
+                                {/* ✅ FIX: Image URL ko theek karne ke liye helper function istemal kiya gaya hai. */}
                                 <img
-                                  src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
+                                  src={getFullImageUrl(image)}
                                   alt={`Product image ${index + 1}`}
                                   className="w-full h-full object-cover rounded-md"
                                 />
@@ -731,9 +710,9 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                         variant="outline"
                         disabled={uploadingImages}
                       >
-                      <Upload className="h-4 w-4 mr-2" />
+                        <Upload className="h-4 w-4 mr-2" />
                         {uploadingImages ? "Uploading..." : "Select Images"}
-                    </Button>
+                      </Button>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -750,8 +729,9 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           <Card key={index} className="relative group">
                             <CardContent className="p-2">
                               <div className="aspect-square relative">
+                                {/* ✅ FIX: Image URL ko theek karne ke liye helper function istemal kiya gaya hai. */}
                                 <img
-                                  src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
+                                  src={getFullImageUrl(image)}
                                   alt={`Product image ${index + 1}`}
                                   className="w-full h-full object-cover rounded-md"
                                 />
@@ -971,13 +951,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                                     style={{ backgroundColor: variant.color.value }}
                                   />
                                 ) : (
-                                                                  <img
-                                  src={variant.color.value || "/placeholder.svg"}
-                                  alt={variant.color?.name || 'Color'}
-                                  className="w-4 h-4 rounded-full border object-cover"
-                                />
-                              )}
-                              <span className="text-xs text-muted-foreground">{variant.color?.name || 'N/A'}</span>
+                                  <img
+                                    src={variant.color.value || "/placeholder.svg"}
+                                    alt={variant.color?.name || 'Color'}
+                                    className="w-4 h-4 rounded-full border object-cover"
+                                  />
+                                )}
+                                <span className="text-xs text-muted-foreground">{variant.color?.name || 'N/A'}</span>
                               </div>
                             </div>
 

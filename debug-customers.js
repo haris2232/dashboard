@@ -10,7 +10,7 @@ const testCustomerAPI = async () => {
     console.log('👤 User:', user ? JSON.parse(user) : 'Missing');
     
     // Test 2: Try to fetch customers
-    const response = await fetch('http://34.18.0.53:5000/api/users/admin/all', {
+    const response = await fetch('https://athlekt.com/backendnew/api/users/admin/all', {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { 'Authorization': `Bearer ${token}` })

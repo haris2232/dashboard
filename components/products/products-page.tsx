@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox" // <-- Import Checkbox
 import { productAPI, type Product } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
 import { ProductDialog } from "./product-dialog"
-import { Plus, Search, Edit, Trash2, Package, Star } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Package, Star, XCircle } from "lucide-react"
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -19,6 +20,7 @@ export function ProductsPage() {
   const [collectionFilter, setCollectionFilter] = useState<string>("all")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]) // <-- State for selected product IDs
   const { toast } = useToast()
 
   useEffect(() => {
@@ -26,6 +28,7 @@ export function ProductsPage() {
   }, [])
 
   const fetchProducts = async () => {
+    setLoading(true)
     try {
       const data = await productAPI.getProducts()
       setProducts(data)
@@ -59,6 +62,30 @@ export function ProductsPage() {
     }
   }
 
+  // --- New Bulk Delete Handler ---
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedProducts.length} selected products?`)) return
+
+    try {
+      // Perform all delete operations concurrently
+      await Promise.all(selectedProducts.map((id) => productAPI.deleteProduct(id)))
+      
+      toast({
+        title: "Success",
+        description: `${selectedProducts.length} products deleted successfully.`,
+      })
+      
+      setSelectedProducts([]) // Clear selection
+      fetchProducts() // Refresh data
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete some products. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleEdit = (product: Product) => {
     setSelectedProduct(product)
     setDialogOpen(true)
@@ -87,14 +114,33 @@ export function ProductsPage() {
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.baseSku.toLowerCase().includes(searchQuery.toLowerCase())
+                          product.baseSku.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesCollection = collectionFilter === "all" || 
-                             (collectionFilter === "men" && product.category === "Men") ||
-                             (collectionFilter === "women" && product.category === "Women")
+                              (collectionFilter === "men" && product.category === "Men") ||
+                              (collectionFilter === "women" && product.category === "Women")
     
     return matchesSearch && matchesCollection
   })
+
+  // --- New Handlers for Selection ---
+  const handleProductSelect = (productId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedProducts((prev) => [...prev, productId])
+    } else {
+      setSelectedProducts((prev) => prev.filter((id) => id !== productId))
+    }
+  }
+
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedProducts(filteredProducts.map((p) => p._id))
+    } else {
+      setSelectedProducts([])
+    }
+  }
+
+  const areAllVisibleSelected = filteredProducts.length > 0 && selectedProducts.length === filteredProducts.length;
 
   if (loading) {
     return (
@@ -113,6 +159,13 @@ export function ProductsPage() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          {/* --- "Select All" Checkbox --- */}
+          <Checkbox
+            checked={areAllVisibleSelected}
+            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+            aria-label="Select all products on this page"
+            disabled={filteredProducts.length === 0}
+          />
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
@@ -133,10 +186,25 @@ export function ProductsPage() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleAdd} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Product
-        </Button>
+        
+        {/* --- Conditional Action Buttons --- */}
+        {selectedProducts.length > 0 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selectedProducts.length} selected</span>
+            <Button variant="destructive" onClick={handleBulkDelete} className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Delete Selected
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedProducts([])}>
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={handleAdd} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Product
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -144,20 +212,31 @@ export function ProductsPage() {
           const totalStock = getTotalStock(product)
           const defaultVariant = getDefaultVariant(product)
           const finalPrice = defaultVariant?.priceOverride || product.basePrice
+          const isSelected = selectedProducts.includes(product._id)
 
           return (
-            <Card key={product._id} className="hover:shadow-lg transition-shadow">
+            // --- Added selection styling to Card ---
+            <Card key={product._id} className={`transition-all ${isSelected ? "border-primary ring-2 ring-primary" : "hover:shadow-lg"}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg line-clamp-2">{product.title}</CardTitle>
-                    <CardDescription className="mt-1">
-                      SKU: {product.baseSku} • {product.category}
-                      {product.subCategory && <> • {product.subCategory}</>}
-                      {product.collectionType && product.collectionType !== "general" && (
-                        <> • <Badge variant="outline" className="text-xs">{product.collectionType.toUpperCase()}</Badge></>
-                      )}
-                    </CardDescription>
+                  <div className="flex items-start gap-3 flex-1">
+                    {/* --- Individual Product Checkbox --- */}
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleProductSelect(product._id, !!checked)}
+                      aria-label={`Select product ${product.title}`}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <CardTitle className="text-lg line-clamp-2">{product.title}</CardTitle>
+                      <CardDescription className="mt-1">
+                        SKU: {product.baseSku} • {product.category}
+                        {product.subCategory && <> • {product.subCategory}</>}
+                        {product.collectionType && product.collectionType !== "general" && (
+                          <> • <Badge variant="outline" className="text-xs">{product.collectionType.toUpperCase()}</Badge></>
+                        )}
+                      </CardDescription>
+                    </div>
                   </div>
                   <div className="flex space-x-1 ml-2">
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(product)}>
@@ -170,6 +249,7 @@ export function ProductsPage() {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* ... Rest of your CardContent remains the same ... */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -180,19 +260,10 @@ export function ProductsPage() {
                       )}
                       <span className="text-2xl font-bold">AED{finalPrice.toFixed(2)}</span>
                     </div>
-                    <div className="flex space-x-2">
-                      <Badge variant={product.isActive ? "default" : "secondary"}>
-                        {product.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                      {product.isProductHighlight && (
-                        <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
-                          <Star className="h-3 w-3 mr-1" />
-                          Highlight
-                        </Badge>
-                      )}
-                    </div>
+                    <Badge variant={product.isActive ? "default" : "secondary"}>
+                      {product.isActive ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
-
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <Package className="h-4 w-4 mr-1 text-muted-foreground" />
@@ -202,8 +273,6 @@ export function ProductsPage() {
                       <span className="text-muted-foreground">Variants: {product.variants.length}</span>
                     </div>
                   </div>
-
-                  {/* Size and Color Preview */}
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs text-muted-foreground">Sizes:</span>
@@ -220,7 +289,6 @@ export function ProductsPage() {
                         )}
                       </div>
                     </div>
-
                     <div className="flex items-center space-x-2">
                       <span className="text-xs text-muted-foreground">Colors:</span>
                       <div className="flex space-x-1">
@@ -250,8 +318,6 @@ export function ProductsPage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Default Variant Indicator */}
                   {defaultVariant && (
                     <div className="flex items-center text-xs text-muted-foreground">
                       <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />

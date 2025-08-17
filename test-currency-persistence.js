@@ -12,7 +12,7 @@ async function testCurrencyPersistence() {
 
     // Test 2: Check backend settings
     console.log('\n2. Checking backend settings...');
-    const response = await fetch('http://34.18.0.53:5000/api/settings/public');
+    const response = await fetch('https://athlekt.com/backendnew/api/settings/public');
     const settings = await response.json();
     console.log('✅ Backend currency:', settings.currency);
 
@@ -31,7 +31,7 @@ async function testCurrencyPersistence() {
     const newCurrency = settings.currency === 'USD' ? 'AED' : 'USD';
     console.log('Changing currency to:', newCurrency);
     
-    const updateResponse = await fetch('http://34.18.0.53:5000/api/settings/currency', {
+    const updateResponse = await fetch('https://athlekt.com/backendnew/api/settings/currency', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
