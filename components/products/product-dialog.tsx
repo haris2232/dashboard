@@ -32,8 +32,6 @@ const formSchema = z.object({
   care: z.string().optional(),
   reviewRating: z.string().optional(),
   isActive: z.boolean(),
-  isProductHighlight: z.boolean(),
-  highlightImageIndex: z.number().min(0).optional(),
 })
 
 interface ProductDialogProps {
@@ -53,6 +51,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [activeTab, setActiveTab] = useState("basic")
   const [images, setImages] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [highlightImage, setHighlightImage] = useState<string>("")
   const [sizeOptions, setSizeOptions] = useState<string[]>([])
   const [colorOptions, setColorOptions] = useState<
     Array<{
@@ -72,7 +71,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const { toast } = useToast()
   const [categories, setCategories] = useState<{ men: any[], women: any[], other: any[] }>({ men: [], women: [], other: [] })
   const [subCategories, setSubCategories] = useState<any[]>([])
-  const [highlightImageIndex, setHighlightImageIndex] = useState<number>(0)
 
   // Fetch categories and sub-categories when dialog opens
   useEffect(() => {
@@ -140,8 +138,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       care: "",
       reviewRating: "5",
       isActive: true,
-      isProductHighlight: false,
-      highlightImageIndex: 0,
     },
   })
 
@@ -171,11 +167,9 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: product.care || "",
         reviewRating: product.reviewRating?.toString() || "5",
         isActive: product.isActive,
-        isProductHighlight: product.isProductHighlight || false,
-        highlightImageIndex: product.highlightImageIndex || 0,
       })
-      setHighlightImageIndex(product.highlightImageIndex || 0)
       setImages(product.images || [])
+      setHighlightImage(product.highlightImage || "")
       setSizeOptions(product.sizeOptions)
       setColorOptions(product.colorOptions)
       setVariants(product.variants)
@@ -195,12 +189,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: "",
         reviewRating: "5",
         isActive: true,
-        isProductHighlight: false,
-        highlightImageIndex: 0,
       })
-      setHighlightImageIndex(0)
       setImages([])
       setImageFiles([])
+      setHighlightImage("")
       setSizeOptions([])
       setColorOptions([])
       setVariants([])
@@ -358,6 +350,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         variants,
         defaultVariant,
         images: images.length > 0 ? images : [],
+        highlightImage: highlightImage || "",
       }
 
       if (product) {
@@ -642,73 +635,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="isProductHighlight"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Product Highlight</FormLabel>
-                        <div className="text-sm text-muted-foreground">Show this product in the highlight section on the website</div>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Highlight Image Selection - Only show if Product Highlight is enabled */}
-                {form.watch("isProductHighlight") && images.length > 0 && (
-                  <FormField
-                    control={form.control}
-                    name="highlightImageIndex"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel className="text-base">Highlight Image</FormLabel>
-                        <div className="text-sm text-muted-foreground">Select which image to show in the highlight section</div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {images.map((image, index) => (
-                            <div
-                              key={index}
-                              className={`relative cursor-pointer rounded-lg border-2 transition-all ${
-                                field.value === index 
-                                  ? 'border-blue-500 bg-blue-50' 
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                              onClick={() => field.onChange(index)}
-                            >
-                              <div className="aspect-square relative">
-                                <img
-                                  src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
-                                  alt={`Product image ${index + 1}`}
-                                  className="w-full h-full object-cover rounded-md"
-                                />
-                                {field.value === index && (
-                                  <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
-                                    <Star className="h-6 w-6 text-blue-600 fill-blue-600" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="p-2 text-center">
-                                <span className="text-xs font-medium">Image {index + 1}</span>
-                                {field.value === index && (
-                                  <div className="mt-1">
-                                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
-                                      <Star className="h-3 w-3 mr-1" />
-                                      Highlighted
-                                    </Badge>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                )}
               </TabsContent>
 
               <TabsContent value="images" className="space-y-6">
@@ -745,51 +671,77 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </div>
 
                     {images.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {images.map((image, index) => (
-                          <Card key={index} className="relative group">
-                            <CardContent className="p-2">
-                              <div className="aspect-square relative">
-                                <img
-                                  src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
-                                  alt={`Product image ${index + 1}`}
-                                  className="w-full h-full object-cover rounded-md"
-                                />
-                                {index === 0 && <Badge className="absolute top-1 left-1 text-xs">Main</Badge>}
-                              </div>
-                              <div className="flex justify-between items-center mt-2 gap-1">
-                                <div className="flex gap-1">
+                      <div className="space-y-4">
+                        {/* Highlight Image Selection */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Product Highlight Image</label>
+                          <p className="text-xs text-muted-foreground">
+                            Select which image should be displayed as the product highlight on the product detail page
+                          </p>
+                          <Select value={highlightImage} onValueChange={setHighlightImage}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select highlight image" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {images.map((image, index) => (
+                                <SelectItem key={index} value={image}>
+                                  Image {index + 1}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Image Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {images.map((image, index) => (
+                            <Card key={index} className={`relative group ${highlightImage === image ? 'ring-2 ring-blue-500' : ''}`}>
+                              <CardContent className="p-2">
+                                <div className="aspect-square relative">
+                                  <img
+                                    src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
+                                    alt={`Product image ${index + 1}`}
+                                    className="w-full h-full object-cover rounded-md"
+                                  />
+                                  {index === 0 && <Badge className="absolute top-1 left-1 text-xs">Main</Badge>}
+                                  {highlightImage === image && (
+                                    <Badge className="absolute top-1 right-1 text-xs bg-blue-500">Highlight</Badge>
+                                  )}
+                                </div>
+                                <div className="flex justify-between items-center mt-2 gap-1">
+                                  <div className="flex gap-1">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => moveImage(index, "up")}
+                                      disabled={index === 0}
+                                    >
+                                      <MoveUp className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => moveImage(index, "down")}
+                                      disabled={index === images.length - 1}
+                                    >
+                                      <MoveDown className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                   <Button
                                     type="button"
                                     size="sm"
-                                    variant="outline"
-                                    onClick={() => moveImage(index, "up")}
-                                    disabled={index === 0}
+                                    variant="destructive"
+                                    onClick={() => removeImage(index)}
                                   >
-                                    <MoveUp className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => moveImage(index, "down")}
-                                    disabled={index === images.length - 1}
-                                  >
-                                    <MoveDown className="h-3 w-3" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => removeImage(index)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
                       </div>
                     )}
 

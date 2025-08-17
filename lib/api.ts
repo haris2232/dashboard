@@ -73,8 +73,8 @@ export interface Product {
   description: string
   discountPercentage?: number
   images: string[]
+  highlightImage?: string
   isActive: boolean
-  isProductHighlight?: boolean
   createdAt: string
   // Variation options
   sizeOptions: string[]
