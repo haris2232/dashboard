@@ -34,6 +34,7 @@ const formSchema = z.object({
   care: z.string().optional(),
   reviewRating: z.string().optional(),
   isActive: z.boolean(),
+  highlightImage: z.string().optional(),
 })
 
 interface ProductDialogProps {
@@ -113,6 +114,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       care: "",
       reviewRating: "5",
       isActive: true,
+      highlightImage: "",
     },
   })
 
@@ -141,9 +143,18 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: product.care || "",
         reviewRating: product.reviewRating?.toString() || "5",
         isActive: product.isActive,
+        highlightImage: product.highlightImage ? (product.highlightImage.startsWith('http') ? new URL(product.highlightImage).pathname : product.highlightImage) : "",
       })
-      setImages(product.images || [])
-      setHighlightImage(product.highlightImage || "")
+      // Ensure we store relative paths, not full URLs
+      const imagePaths = product.images ? product.images.map(img => {
+        // If it's a full URL, extract just the path part
+        if (img.startsWith('http')) {
+          const url = new URL(img);
+          return url.pathname;
+        }
+        return img;
+      }) : [];
+      setImages(imagePaths)
       setSizeOptions(product.sizeOptions)
       setColorOptions(product.colorOptions)
       setVariants(product.variants)
@@ -163,6 +174,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: "",
         reviewRating: "5",
         isActive: true,
+        highlightImage: "",
       })
       setImages([])
       setSizeOptions([])
@@ -341,20 +353,25 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         return
       }
 
-      const productData = {
-        ...values,
-        basePrice: Number.parseFloat(values.basePrice),
-        discountPercentage: values.discountPercentage ? Number.parseFloat(values.discountPercentage) : undefined,
-        reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
-        sizeOptions,
-        colorOptions,
-        variants,
-        defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
-        images: images.length > 0 ? images : [],
-        highlightImage: highlightImage || "",
-      }
+             const productData = {
+         ...values,
+         basePrice: Number.parseFloat(values.basePrice),
+         discountPercentage: values.discountPercentage ? Number.parseFloat(values.discountPercentage) : undefined,
+         reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
+         sizeOptions,
+         colorOptions,
+         variants,
+         defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
+         images: images.length > 0 ? images : (product?.images || []),
+         highlightImage: values.highlightImage || "",
+       }
 
       if (product) {
+        console.log('🔍 Updating product with data:', {
+          images: productData.images,
+          highlightImage: productData.highlightImage,
+          originalImages: product.images
+        });
         await productAPI.updateProduct(product._id, productData)
         toast({
           title: "Success",
@@ -642,24 +659,24 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     )}
                 />
 
-                {form.watch("isProductHighlight") && images.length > 0 && (
+                {images.length > 0 && (
                     <FormField
                     control={form.control}
-                    name="highlightImageIndex"
+                    name="highlightImage"
                     render={({ field }) => (
                         <FormItem className="space-y-3">
-                        <FormLabel className="text-base">Highlight Image</FormLabel>
-                        <div className="text-sm text-muted-foreground">Select which image to show</div>
+                        <FormLabel className="text-base">Product Highlight Image</FormLabel>
+                        <div className="text-sm text-muted-foreground">Select which image to show as highlight (optional)</div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {images.map((image, index) => (
                             <div
                                 key={index}
                                 className={`relative cursor-pointer rounded-lg border-2 transition-all ${
-                                field.value === index 
+                                field.value === image 
                                     ? 'border-primary' 
                                     : 'border-transparent hover:border-muted-foreground'
                                 }`}
-                                onClick={() => field.onChange(index)}
+                                onClick={() => field.onChange(field.value === image ? "" : image)}
                             >
                                 <div className="aspect-square relative">
                                 <img
@@ -667,12 +684,17 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                                     alt={`Product image ${index + 1}`}
                                     className="w-full h-full object-cover rounded-md"
                                 />
-                                {field.value === index && (
+                                {field.value === image && (
                                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center rounded-md">
                                     <Star className="h-6 w-6 text-primary fill-primary" />
                                     </div>
                                 )}
                                 </div>
+                                {field.value === image && (
+                                    <div className="absolute top-1 right-1">
+                                        <Badge className="bg-primary text-primary-foreground text-xs">Highlight</Badge>
+                                    </div>
+                                )}
                             </div>
                             ))}
                         </div>
