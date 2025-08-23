@@ -2,7 +2,7 @@ import { SubCategory } from "@/types/sub-category"
 
 // Helper function for API calls
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.18.0.53:5000/api';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://athlekt.com/backendnew/api';
   const url = `${API_BASE_URL}${endpoint}`;
   
   // Get auth token from localStorage if available

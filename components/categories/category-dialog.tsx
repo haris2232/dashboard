@@ -103,7 +103,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
 
       console.log('📋 FormData created');
 
-      const response = await fetch('http://34.18.0.53:5000/api/upload', {
+      const response = await fetch('https://athlekt.com/backendnew/api/upload', {
         method: 'POST',
         body: formData,
       })

@@ -15,7 +15,6 @@ interface Customer {
   _id: string
   name: string
   email: string
-  dateOfBirth?: string
   totalOrders: number
   totalSpent: number
   isActive: boolean
@@ -28,6 +27,8 @@ export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [fromDate, setFromDate] = useState<string>("")
+  const [toDate, setToDate] = useState<string>("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -116,11 +117,21 @@ export function CustomersPage() {
     return "Active"
   }
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
+  const filteredCustomers = customers.filter((customer) => {
+    const matchesSearch =
       customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const createdDate = new Date(customer.createdAt)
+    const from = fromDate ? new Date(fromDate) : null
+    const to = toDate ? new Date(toDate) : null
+
+    const matchesDate =
+      (!from || createdDate >= from) &&
+      (!to || createdDate <= to)
+
+    return matchesSearch && matchesDate
+  })
 
   if (loading) {
     return (
@@ -139,6 +150,29 @@ export function CustomersPage() {
         </div>
       </div>
 
+      {/* Date range filter */}
+      <div className="flex items-center space-x-2 mb-2">
+        <div>
+          <label className="text-sm mr-2">From:</label>
+          <Input
+            type="date"
+            value={fromDate}
+            onChange={e => setFromDate(e.target.value)}
+            className="w-[140px]"
+          />
+        </div>
+        <div>
+          <label className="text-sm mr-2">To:</label>
+          <Input
+            type="date"
+            value={toDate}
+            onChange={e => setToDate(e.target.value)}
+            className="w-[140px]"
+          />
+        </div>
+      </div>
+
+      {/* Search input */}
       <div className="flex items-center space-x-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -217,12 +251,6 @@ export function CustomersPage() {
                   <Badge variant={customer.isEmailVerified ? "default" : "secondary"}>
                     {customer.isEmailVerified ? "Yes" : "No"}
                   </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Date of Birth:</span>
-                  <span className="text-sm">
-                    {customer.dateOfBirth ? new Date(customer.dateOfBirth).toLocaleDateString() : "Not provided"}
-                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Joined:</span>
