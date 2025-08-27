@@ -34,6 +34,7 @@ const formSchema = z.object({
   care: z.string().optional(),
   reviewRating: z.string().optional(),
   isActive: z.boolean(),
+  isProductHighlight: z.boolean(),
   highlightImage: z.string().optional(),
 })
 
@@ -62,7 +63,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [newColorValue, setNewColorValue] = useState("#000000")
   const [colorInputType, setColorInputType] = useState<"hex" | "image">("hex")
   const [uploadingImages, setUploadingImages] = useState(false)
-  const [uploadingColorImage, setUploadingColorImage] = useState(false) // ✨ NEW: State for pattern upload
+  const [uploadingColorImage, setUploadingColorImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const [subCategories, setSubCategories] = useState<any[]>([])
@@ -114,6 +115,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       care: "",
       reviewRating: "5",
       isActive: true,
+      isProductHighlight: false,
       highlightImage: "",
     },
   })
@@ -143,6 +145,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: product.care || "",
         reviewRating: product.reviewRating?.toString() || "5",
         isActive: product.isActive,
+        isProductHighlight: product.isProductHighlight || false,
         highlightImage: product.highlightImage ? (product.highlightImage.startsWith('http') ? new URL(product.highlightImage).pathname : product.highlightImage) : "",
       })
       // Ensure we store relative paths, not full URLs
@@ -174,6 +177,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: "",
         reviewRating: "5",
         isActive: true,
+        isProductHighlight: false,
         highlightImage: "",
       })
       setImages([])
@@ -363,7 +367,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
          variants,
          defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
          images: images.length > 0 ? images : (product?.images || []),
-         highlightImage: values.highlightImage || "",
+         highlightImage: values.isProductHighlight ? values.highlightImage || null : null,
        }
 
       if (product) {
@@ -659,7 +663,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     )}
                 />
 
-                {images.length > 0 && (
+                {images.length > 0 && form.getValues("isProductHighlight") && (
                     <FormField
                     control={form.control}
                     name="highlightImage"
