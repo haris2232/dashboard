@@ -978,12 +978,24 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                               </div>
                             </div>
 
-                            <div className="col-span-3">
+                            <div className="col-span-2">
                                 <FormLabel className="text-xs">SKU</FormLabel>
                                 <Input
                                     placeholder="SKU"
                                     value={variant.sku}
                                     onChange={(e) => updateVariant(variant.id, { sku: e.target.value })}
+                                    className="text-sm h-9"
+                                />
+                            </div>
+
+                            <div className="col-span-2">
+                                <FormLabel className="text-xs">Price (AED)</FormLabel>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={variant.priceOverride || form.getValues("basePrice")}
+                                    onChange={(e) => updateVariant(variant.id, { priceOverride: Number.parseFloat(e.target.value) || 0 })}
                                     className="text-sm h-9"
                                 />
                             </div>
