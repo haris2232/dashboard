@@ -54,6 +54,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       name: string
       type: "hex" | "image"
       value: string
+      images?: string[]
     }>
   >([])
   const [variants, setVariants] = useState<ProductVariant[]>([])
@@ -290,6 +291,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
   const removeColor = (colorName: string) => {
     setColorOptions(colorOptions.filter((c) => c.name !== colorName))
+  }
+
+  // Function to assign images to a specific color
+  const assignImagesToColor = (colorName: string, selectedImages: string[]) => {
+    setColorOptions(colorOptions.map(color => 
+      color.name === colorName 
+        ? { ...color, images: selectedImages }
+        : color
+    ))
   }
 
   // ✨ NEW: Function to handle pattern image upload.
@@ -927,6 +937,75 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Color Image Assignment Section */}
+                {colorOptions.length > 0 && images.length > 0 && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle>Assign Images to Colors</CardTitle>
+                      <CardDescription>
+                        Select which images should be displayed for each color variant
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {colorOptions.map((color) => (
+                        <div key={color.name} className="space-y-3 p-4 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            {color.type === "hex" ? (
+                              <div
+                                className="w-6 h-6 rounded-full border"
+                                style={{ backgroundColor: color.value }}
+                              />
+                            ) : (
+                              <img
+                                src={getFullImageUrl(color.value)}
+                                alt={color.name}
+                                className="w-6 h-6 rounded-full border object-cover"
+                              />
+                            )}
+                            <span className="font-medium">{color.name}</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {images.map((image, index) => {
+                              const isSelected = color.images?.includes(image) || false
+                              return (
+                                <div
+                                  key={index}
+                                  className={`relative cursor-pointer rounded-lg border-2 transition-all ${
+                                    isSelected 
+                                      ? 'border-primary' 
+                                      : 'border-transparent hover:border-muted-foreground'
+                                  }`}
+                                  onClick={() => {
+                                    const currentImages = color.images || []
+                                    const newImages = isSelected
+                                      ? currentImages.filter(img => img !== image)
+                                      : [...currentImages, image]
+                                    assignImagesToColor(color.name, newImages)
+                                  }}
+                                >
+                                  <div className="aspect-square relative">
+                                    <img
+                                      src={getFullImageUrl(image)}
+                                      alt={`Product image ${index + 1}`}
+                                      className="w-full h-full object-cover rounded-md"
+                                    />
+                                    {isSelected && (
+                                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center rounded-md">
+                                        <Star className="h-4 w-4 text-primary fill-primary" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="variants" className="space-y-4 pt-4">

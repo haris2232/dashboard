@@ -82,6 +82,7 @@ export interface Product {
     name: string
     type: "hex" | "image"
     value: string
+    images?: string[]
   }>
   variants: ProductVariant[]
   defaultVariant?: string // variant ID
