@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { orderAPI, type Order } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useToast } from "@/components/ui/use-toast"
-import { Search, Package, Eye, Truck, Download, Calendar } from "lucide-react"
+import { Search, Package, Eye, Truck, Download, Calendar, XCircle } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { useCurrency } from "@/lib/currency-context"
 
@@ -21,6 +28,7 @@ export function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([])
   const { toast } = useToast()
   const { formatPrice } = useCurrency()
   const [startDate, setStartDate] = useState("")
@@ -175,10 +183,40 @@ export function OrdersPage() {
     }
   }
 
-  const exportOrders = () => {
+  const exportOrders = (period: 'selected' | 'week' | 'month' | 'custom' | 'all') => {
+    let ordersToExport: Order[] = []
+    const now = new Date()
+
+    if (period === 'selected') {
+      ordersToExport = orders.filter(o => selectedOrders.includes(o.id))
+    } else if (period === 'week') {
+      const lastWeek = new Date(now.setDate(now.getDate() - 7))
+      ordersToExport = orders.filter(o => new Date(o.createdAt) >= lastWeek)
+    } else if (period === 'month') {
+      const lastMonth = new Date(now.setMonth(now.getMonth() - 1))
+      ordersToExport = orders.filter(o => new Date(o.createdAt) >= lastMonth)
+    } else if (period === 'custom') {
+      ordersToExport = filteredOrders.filter(o => {
+        const orderDate = new Date(o.createdAt)
+        const matchesStartDate = !startDate || orderDate >= new Date(startDate)
+        const matchesEndDate = !endDate || orderDate <= new Date(new Date(endDate).setHours(23, 59, 59, 999))
+        return matchesStartDate && matchesEndDate
+      })
+    } else {
+      ordersToExport = filteredOrders
+    }
+
+    if (ordersToExport.length === 0) {
+      toast({
+        title: "No Orders to Export",
+        description: "There are no orders matching your selection.",
+      })
+      return
+    }
+
     const csvContent = [
       ["Order Number", "Customer", "Email", "Total", "Status", "Date"].join(","),
-      ...filteredOrders.map((order) =>
+      ...ordersToExport.map((order) =>
         [
           order.orderNumber,
           order.customer.name,
@@ -200,7 +238,7 @@ export function OrdersPage() {
 
     toast({
       title: "Success",
-      description: "Orders exported successfully",
+      description: `${ordersToExport.length} orders exported successfully`,
     })
   }
 
@@ -237,6 +275,26 @@ export function OrdersPage() {
     return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate
   })
 
+  const handleSelectOrder = (orderId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedOrders((prev) => [...prev, orderId])
+    } else {
+      setSelectedOrders((prev) => prev.filter((id) => id !== orderId))
+    }
+  }
+
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedOrders(filteredOrders.map((o) => o.id))
+    } else {
+      setSelectedOrders([])
+    }
+  }
+
+  const areAllVisibleSelected =
+    filteredOrders.length > 0 && selectedOrders.length === filteredOrders.length
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -252,13 +310,36 @@ export function OrdersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">Manage customer orders and track their status.</p>
         </div>
-        <Button onClick={exportOrders}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedOrders.length > 0 && (
+            <Button variant="outline" onClick={() => exportOrders('selected')}>
+              <Download className="mr-2 h-4 w-4" />
+              Export Selected ({selectedOrders.length})
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export...
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => exportOrders('all')}>Export Filtered List ({filteredOrders.length})</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportOrders('custom')}>Export Custom Date Range</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportOrders('week')}>Export Last 7 Days</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportOrders('month')}>Export Last 30 Days</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="flex items-center space-x-4">
+        <Checkbox
+          checked={areAllVisibleSelected}
+          onCheckedChange={(checked) => handleSelectAll(!!checked)}
+          aria-label="Select all orders on this page"
+        />
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -302,12 +383,22 @@ export function OrdersPage() {
       </div>
 
       <div className="space-y-4">
-        {filteredOrders.map((order) => (
-          <Card key={order.id} className="hover:shadow-lg transition-shadow">
+        {filteredOrders.map((order) => {
+          const isSelected = selectedOrders.includes(order.id)
+          return (
+          <Card key={order.id} className={`transition-all ${isSelected ? "border-primary ring-2 ring-primary" : "hover:shadow-lg"}`}>
             <CardHeader>
               <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">Order #{order.orderNumber}</CardTitle>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(checked) => handleSelectOrder(order.id, !!checked)}
+                    aria-label={`Select order ${order.orderNumber}`}
+                    className="mt-1"
+                  />
+                  <div>
+                    <CardTitle className="text-lg">Order #{order.orderNumber}</CardTitle>
+                  </div>
                   <CardDescription className="flex items-center space-x-4 mt-1">
                     <span>{order.customer?.name}</span>
                     <span>•</span>
@@ -372,7 +463,8 @@ export function OrdersPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          )
+        })}
       </div>
 
       {filteredOrders.length === 0 && !loading && (

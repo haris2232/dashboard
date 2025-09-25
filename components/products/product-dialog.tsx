@@ -423,15 +423,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="images">Images</TabsTrigger>
-            <TabsTrigger value="variations">Size & Colors</TabsTrigger>
+            <TabsTrigger value="media">Media & Variations</TabsTrigger>
             <TabsTrigger value="variants">Variants</TabsTrigger>
           </TabsList>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
               <TabsContent value="basic" className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -718,7 +717,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 )}
               </TabsContent>
 
-              <TabsContent value="images" className="space-y-6 pt-4">
+              <TabsContent value="media" className="space-y-6 pt-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -726,7 +725,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       Product Images
                     </CardTitle>
                     <CardDescription>
-                      Add multiple images. The first image is the main one.
+                      Add product images. The first image in the list will be the main display image.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -807,9 +806,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     )}
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="variations" className="space-y-6 pt-4">
                 <div className="grid md:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader>
@@ -1008,7 +1005,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 )}
               </TabsContent>
 
-              <TabsContent value="variants" className="space-y-4 pt-4">
+              <TabsContent value="variants" className="space-y-4 pt-4 mt-0">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-medium">Product Variants</h3>
