@@ -547,6 +547,31 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                 <span className="text-muted-foreground">Order Date:</span>
                 <span>{formatDate(order.createdAt)}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Payment Status:</span>
+                <span className={`font-semibold ${order.paymentStatus === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {order.paymentStatus?.toUpperCase() || 'PENDING'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shipping Address */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Shipping Address</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              {order.customer.address ? (
+                <>
+                  <p>{order.customer.address.street}</p>
+                  <p>{order.customer.address.city}, {order.customer.address.state} {order.customer.address.zipCode}</p>
+                  <p>{order.customer.address.country || 'United Arab Emirates'}</p>
+                </>
+              ) : (
+                <p className="text-muted-foreground">No address provided.</p>
+              )}
+              <p><strong>Phone:</strong> {order.customer.phone}</p>
             </CardContent>
           </Card>
 
