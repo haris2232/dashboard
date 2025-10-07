@@ -320,6 +320,7 @@ export function CustomersPage() {
                 <TableHead className="text-right">Total Spent</TableHead>
                 <TableHead className="text-right">Orders</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead>Date of Birth</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -357,6 +358,9 @@ export function CustomersPage() {
                     <TableCell className="text-right font-medium">AED{customer.totalSpent?.toFixed(2) || "0.00"}</TableCell>
                     <TableCell className="text-right">{customer.totalOrders}</TableCell>
                     <TableCell>{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {customer.dateOfBirth ? new Date(customer.dateOfBirth).toLocaleDateString() : "N/A"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-1">
                         {customer.isBanned ? (
