@@ -544,6 +544,10 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                 <span>{order.customer.email}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-muted-foreground">Phone:</span>
+                <span>{order.customer.phone || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Order Date:</span>
                 <span>{formatDate(order.createdAt)}</span>
               </div>
@@ -562,7 +566,7 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
               <CardTitle className="text-lg">Shipping Address</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
-              {order.customer.address ? (
+              {order.customer.address && order.customer.address.street ? (
                 <>
                   <p>{order.customer.address.street}</p>
                   <p>{order.customer.address.city}, {order.customer.address.state} {order.customer.address.zipCode}</p>
@@ -571,7 +575,6 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
               ) : (
                 <p className="text-muted-foreground">No address provided.</p>
               )}
-              <p><strong>Phone:</strong> {order.customer.phone}</p>
             </CardContent>
           </Card>
 

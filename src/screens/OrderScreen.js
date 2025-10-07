@@ -46,6 +46,9 @@ const OrderScreen = () => {
   const fetchOrders = async () => {
     try {
       const response = await orderAPI.getOrders()
+      // --- LOGGING START ---
+      console.log("Orders received from API:", JSON.stringify(response.data.slice(0, 2), null, 2));
+      // --- LOGGING END ---
       setOrders(response.data)
     } catch (error) {
       console.error("Error fetching orders:", error)
