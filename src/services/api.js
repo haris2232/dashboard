@@ -76,7 +76,7 @@ export const categoryAPI = {
 
 // Order API
 export const orderAPI = {
-  getOrders: () => api.get("/orders"),
+  getOrders: () => api.get("/orders?populate=customer"),
   updateOrder: (id, orderData) => api.put(`/orders/${id}`, orderData),
 }
 

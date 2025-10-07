@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { View, StyleSheet, FlatList, RefreshControl, Alert } from "react-native"
+import { useState, useEffect, useCallback } from "react"
+import { View, StyleSheet, FlatList, RefreshControl, Alert, ScrollView, TouchableOpacity } from "react-native"
 import {
   Card,
   Title,
@@ -17,6 +17,7 @@ import {
   TextInput,
 } from "react-native-paper"
 import { orderAPI } from "../services/api"
+import { format } from "date-fns"
 import { useAuth } from "../context/AuthContext"
 
 const OrderScreen = () => {
@@ -29,6 +30,7 @@ const OrderScreen = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [menuVisible, setMenuVisible] = useState({})
   const [modalVisible, setModalVisible] = useState(false)
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [trackingNumber, setTrackingNumber] = useState("")
   const [carrier, setCarrier] = useState("")
@@ -36,11 +38,11 @@ const OrderScreen = () => {
   useEffect(() => {
     fetchOrders()
   }, [])
-
-  useEffect(() => {
+  
+  const filterOrders = useCallback(() => {
     filterOrders()
-  }, [searchQuery, orders])
-
+  }, [searchQuery, orders]);
+  
   const fetchOrders = async () => {
     try {
       const response = await orderAPI.getOrders()
@@ -54,7 +56,7 @@ const OrderScreen = () => {
     }
   }
 
-  const filterOrders = () => {
+  const filterOrdersInternal = () => {
     if (!searchQuery) {
       setFilteredOrders(orders)
     } else {
@@ -68,10 +70,14 @@ const OrderScreen = () => {
     }
   }
 
-  const onRefresh = () => {
+  useEffect(() => {
+    filterOrdersInternal();
+  }, [searchQuery, orders]);
+
+  const onRefresh = useCallback(() => {
     setRefreshing(true)
     fetchOrders()
-  }
+  }, []);
 
   const updateOrderStatus = async (orderId, status) => {
     try {
@@ -114,6 +120,11 @@ const OrderScreen = () => {
     setModalVisible(true)
   }
 
+  const openDetailsModal = (order) => {
+    setSelectedOrder(order);
+    setDetailsModalVisible(true);
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
@@ -132,113 +143,148 @@ const OrderScreen = () => {
   }
 
   const renderOrder = ({ item }) => (
-    <Card style={styles.orderCard}>
-      <Card.Content>
-        <View style={styles.orderHeader}>
-          <View style={styles.orderInfo}>
-            <Title style={styles.orderNumber}>#{item.orderNumber}</Title>
-            <Paragraph style={styles.customerName}>{item.customer?.name || "Unknown Customer"}</Paragraph>
-            <Paragraph style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString()}</Paragraph>
-          </View>
+    <TouchableOpacity onPress={() => openDetailsModal(item)}>
+      <Card style={styles.orderCard}>
+        <Card.Content>
+          <View style={styles.orderHeader}>
+            <View style={styles.orderInfo}>
+              <Title style={styles.orderNumber}>#{item.orderNumber}</Title>
+              <Paragraph style={styles.customerName}>{item.customer?.name || "Unknown Customer"}</Paragraph>
+              <Paragraph style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString()}</Paragraph>
+            </View>
 
-          <View style={styles.orderMeta}>
-            <Paragraph style={styles.orderTotal}>${item.total}</Paragraph>
-            <Chip mode="outlined" style={[styles.statusChip, { backgroundColor: getStatusColor(item.status) }]}>
-              {item.status}
-            </Chip>
-          </View>
+            <View style={styles.orderMeta}>
+              <Paragraph style={styles.orderTotal}>${item.total}</Paragraph>
+              <Chip mode="outlined" style={[styles.statusChip, { backgroundColor: getStatusColor(item.status) }]}>
+                {item.status}
+              </Chip>
+            </View>
 
-          {(user?.role === "admin" || user?.role === "manager") && (
-            <Menu
-              visible={menuVisible[item._id]}
-              onDismiss={() => toggleMenu(item._id)}
-              anchor={<IconButton icon="dots-vertical" onPress={() => toggleMenu(item._id)} />}
-            >
-              <Menu.Item
-                onPress={() => {
-                  toggleMenu(item._id)
-                  updateOrderStatus(item._id, "processing")
-                }}
-                title="Mark Processing"
-                leadingIcon="clock"
-              />
-              <Menu.Item
-                onPress={() => {
-                  toggleMenu(item._id)
-                  openTrackingModal(item)
-                }}
-                title="Add Tracking"
-                leadingIcon="truck"
-              />
-              <Menu.Item
-                onPress={() => {
-                  toggleMenu(item._id)
-                  updateOrderStatus(item._id, "delivered")
-                }}
-                title="Mark Delivered"
-                leadingIcon="check"
-              />
-              <Menu.Item
-                onPress={() => {
-                  toggleMenu(item._id)
-                  updateOrderStatus(item._id, "cancelled")
-                }}
-                title="Cancel Order"
-                leadingIcon="close"
-              />
-            </Menu>
-          )}
-        </View>
-
-        <View style={styles.orderDetails}>
-          <Paragraph style={styles.customerEmail}>{item.customer?.email}</Paragraph>
-          <Paragraph style={styles.itemCount}>
-            {item.items?.length || 0} item{item.items?.length !== 1 ? "s" : ""}
-          </Paragraph>
-          {item.trackingNumber && (
-            <Paragraph style={styles.tracking}>
-              Tracking: {item.trackingNumber} ({item.carrier})
-            </Paragraph>
-          )}
-        </View>
-
-        {item.items && item.items.length > 0 && (
-          <View style={styles.itemsList}>
-            {item.items.slice(0, 2).map((orderItem, index) => (
-              <View key={index} style={styles.orderItem}>
-                <Paragraph style={styles.itemName}>{orderItem.product?.title || "Unknown Product"}</Paragraph>
-                <Paragraph style={styles.itemDetails}>
-                  Qty: {orderItem.quantity} × ${orderItem.price}
-                </Paragraph>
-              </View>
-            ))}
-            {item.items.length > 2 && (
-              <Paragraph style={styles.moreItems}>+{item.items.length - 2} more items</Paragraph>
+            {(user?.role === "admin" || user?.role === "manager") && (
+              <Menu
+                visible={menuVisible[item._id]}
+                onDismiss={() => toggleMenu(item._id)}
+                anchor={<IconButton icon="dots-vertical" onPress={() => toggleMenu(item._id)} />}
+              >
+                <Menu.Item
+                  onPress={() => {
+                    toggleMenu(item._id)
+                    updateOrderStatus(item._id, "processing")
+                  }}
+                  title="Mark Processing"
+                  leadingIcon="clock"
+                />
+                <Menu.Item
+                  onPress={() => {
+                    toggleMenu(item._id)
+                    openTrackingModal(item)
+                  }}
+                  title="Add Tracking"
+                  leadingIcon="truck"
+                />
+                <Menu.Item
+                  onPress={() => {
+                    toggleMenu(item._id)
+                    updateOrderStatus(item._id, "delivered")
+                  }}
+                  title="Mark Delivered"
+                  leadingIcon="check"
+                />
+                <Menu.Item
+                  onPress={() => {
+                    toggleMenu(item._id)
+                    updateOrderStatus(item._id, "cancelled")
+                  }}
+                  title="Cancel Order"
+                  leadingIcon="close"
+                />
+              </Menu>
             )}
           </View>
-        )}
-      </Card.Content>
-    </Card>
+
+          <View style={styles.orderDetails}>
+            <Paragraph style={styles.customerEmail}>{item.customer?.email}</Paragraph>
+            <Paragraph style={styles.itemCount}>
+              {item.items?.length || 0} item{item.items?.length !== 1 ? "s" : ""}
+            </Paragraph>
+            {item.trackingNumber && (
+              <Paragraph style={styles.tracking}>
+                Tracking: {item.trackingNumber} ({item.carrier})
+              </Paragraph>
+            )}
+          </View>
+
+          {item.items && item.items.length > 0 && (
+            <View style={styles.itemsList}>
+              {item.items.slice(0, 2).map((orderItem, index) => (
+                <View key={index} style={styles.orderItem}>
+                  <Paragraph style={styles.itemName}>{orderItem.product?.title || "Unknown Product"}</Paragraph>
+                  <Paragraph style={styles.itemDetails}>
+                    Qty: {orderItem.quantity} × ${orderItem.price}
+                  </Paragraph>
+                </View>
+              ))}
+              {item.items.length > 2 && (
+                <Paragraph style={styles.moreItems}>+{item.items.length - 2} more items</Paragraph>
+              )}
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+    </TouchableOpacity>
   )
 
   return (
     <View style={styles.container}>
       <Searchbar
         placeholder="Search orders..."
-        onChangeText={setSearchQuery}
+        onChangeText={(query) => setSearchQuery(query)}
         value={searchQuery}
         style={styles.searchbar}
       />
 
       <FlatList
         data={filteredOrders}
-        renderItem={renderOrder}
+        renderItem={renderOrder} // Use the updated renderOrder
         keyExtractor={(item) => item._id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
       />
 
+      {/* Order Details Modal */}
+      <Portal>
+        <Modal visible={detailsModalVisible} onDismiss={() => setDetailsModalVisible(false)} contentContainerStyle={styles.modalContainer}>
+          {selectedOrder && (
+            <ScrollView>
+              <Title>Order #{selectedOrder.orderNumber}</Title>
+              <Paragraph>Placed on: {format(new Date(selectedOrder.createdAt), 'dd MMM yyyy, h:mm a')}</Paragraph>
+              
+              <Title style={styles.detailTitle}>Customer Details</Title>
+              <Paragraph>Name: {selectedOrder.customer.name}</Paragraph>
+              <Paragraph>Email: {selectedOrder.customer.email}</Paragraph>
+              <Paragraph>Phone: {selectedOrder.customer.phone}</Paragraph>
+
+              {selectedOrder.customer.address && (
+                <>
+                  <Title style={styles.detailTitle}>Shipping Address</Title>
+                  <Paragraph>{selectedOrder.customer.address.street}</Paragraph>
+                  <Paragraph>{selectedOrder.customer.address.city}, {selectedOrder.customer.address.state} {selectedOrder.customer.address.zipCode}</Paragraph>
+                  <Paragraph>{selectedOrder.customer.address.country}</Paragraph>
+                </>
+              )}
+
+              <Title style={styles.detailTitle}>Order Items</Title>
+              {selectedOrder.items.map((item, index) => (
+                <Paragraph key={index}>- {item.productName} (x{item.quantity}) @ ${item.price}</Paragraph>
+              ))}
+              <Button onPress={() => setDetailsModalVisible(false)} style={{marginTop: 20}}>Close</Button>
+            </ScrollView>
+          )}
+        </Modal>
+      </Portal>
+
+      {/* Tracking Modal (existing) */}
       <Portal>
         <Modal
           visible={modalVisible}
@@ -282,6 +328,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    paddingBottom: 16,
   },
   searchbar: {
     margin: 16,
@@ -392,6 +439,11 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+  },
+  detailTitle: {
+    fontSize: 18,
+    marginTop: 15,
+    marginBottom: 5,
   },
 })
 
