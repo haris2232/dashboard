@@ -220,7 +220,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     try {
       setUploadingImages(true)
       const fileArray = Array.from(files)
-      const uploadedUrls = await productAPI.uploadImages(fileArray)
+      const uploadedUrls = await productAPI.uploadImages(fileArray) // This correctly calls the endpoint for multiple images
       setImages(prev => [...prev, ...uploadedUrls])
       toast({
         title: "Success",
@@ -754,12 +754,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {images.map((image, index) => (
                           <Card key={index} className="relative group">
-                            <CardContent className="p-2">
-                              <div className="aspect-square relative">
+                            <CardContent className="p-0">
+                              <div className="aspect-square relative rounded-lg overflow-hidden">
                                 <img
                                   src={getFullImageUrl(image)}
                                   alt={`Product image ${index + 1}`}
-                                  className="w-full h-full object-cover rounded-md"
+                                  className="w-full h-full object-cover"
                                 />
                                 {index === 0 && <Badge className="absolute top-1 left-1 text-xs">Main</Badge>}
                               </div>
@@ -975,18 +975,18 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                                       : 'border-transparent hover:border-muted-foreground'
                                   }`}
                                   onClick={() => {
-                                    const currentImages = color.images || []
+                                    const currentImages = color.images || [];
                                     const newImages = isSelected
                                       ? currentImages.filter(img => img !== image)
-                                      : [...currentImages, image]
-                                    assignImagesToColor(color.name, newImages)
+                                      : [...currentImages, image];
+                                    assignImagesToColor(color.name, newImages);
                                   }}
                                 >
-                                  <div className="aspect-square relative">
+                                  <div className="aspect-square relative rounded-md overflow-hidden">
                                     <img
                                       src={getFullImageUrl(image)}
                                       alt={`Product image ${index + 1}`}
-                                      className="w-full h-full object-cover rounded-md"
+                                      className="w-full h-full object-cover"
                                     />
                                     {isSelected && (
                                       <div className="absolute inset-0 bg-primary/20 flex items-center justify-center rounded-md">

@@ -104,7 +104,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
       console.log('📋 FormData created');
 
       const response = await fetch('https://athlekt.com/backendnew/api/upload', {
-        method: 'POST',
+        method: 'POST', // This endpoint expects a single file with field name 'image'
         body: formData,
       })
 
@@ -125,7 +125,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Upload failed:', errorData);
-        throw new Error(errorData.error || 'Upload failed')
+        throw new Error(errorData.error || 'Upload failed. The file might be larger than 50MB.')
       }
     } catch (error) {
       console.error('❌ Upload error:', error);

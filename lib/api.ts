@@ -28,26 +28,6 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   return response.json();
 };
 
-// Helper function for file uploads
-const uploadFiles = async (files: File[], endpoint: string) => {
-  const formData = new FormData();
-  files.forEach((file) => {
-    formData.append('images', file);
-  });
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Upload failed! status: ${response.status}`);
-  }
-
-  return response.json();
-};
-
 export interface ProductVariant {
   id: string
   size: string
@@ -432,8 +412,26 @@ export const productAPI = {
 
   uploadImages: async (files: File[]): Promise<string[]> => {
     try {
-      const response = await uploadFiles(files, '/products/upload-images');
-      return response.data;
+      const formData = new FormData();
+      files.forEach((file) => {
+        // The backend route expects the field name to be 'images'
+        formData.append('images', file);
+      });
+
+      const response = await fetch(`${API_BASE_URL}/products/upload-images`, {
+        method: 'POST',
+        body: formData,
+        // Note: Don't set 'Content-Type' header manually for FormData,
+        // the browser will do it correctly with the boundary.
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Upload failed! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data;
     } catch (error) {
       console.error('Error uploading images:', error);
       throw error;
