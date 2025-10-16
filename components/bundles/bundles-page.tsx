@@ -42,6 +42,8 @@ export function BundlesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBundle, setEditingBundle] = useState<Bundle | null>(null)
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null)
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof bundleSchema>>({
@@ -88,11 +90,21 @@ export function BundlesPage() {
         endDate: bundle.endDate || "",
         isActive: bundle.isActive,
       })
-      setSelectedProducts(bundle.products.map((p) => p._id))
+      const productIds = bundle.products.map((p) => p._id)
+      setSelectedProducts(productIds)
+      if (productIds.length > 0) {
+        const firstProduct = products.find((p) => p._id === productIds[0])
+        if (firstProduct) {
+          setSelectedCategory(firstProduct.category)
+          setSelectedSubCategory(firstProduct.subCategory)
+        }
+      }
     } else {
       setEditingBundle(null)
       form.reset()
       setSelectedProducts([])
+      setSelectedCategory(null)
+      setSelectedSubCategory(null)
     }
     setDialogOpen(true)
   }
@@ -102,6 +114,8 @@ export function BundlesPage() {
     setEditingBundle(null)
     form.reset()
     setSelectedProducts([])
+    setSelectedCategory(null)
+    setSelectedSubCategory(null)
   }
 
   const onSubmit = async (values: z.infer<typeof bundleSchema>) => {
@@ -126,18 +140,29 @@ export function BundlesPage() {
 
     try {
       const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
+      if (bundleProducts.length > 0) {
+        const firstProduct = bundleProducts[0]
+        const allSameCategory = bundleProducts.every(p => p.category === firstProduct.category)
+        const allSameSubCategory = bundleProducts.every(p => p.subCategory === firstProduct.subCategory)
+        if (!allSameCategory || !allSameSubCategory) {
+          toast({
+            title: "Error",
+            description: "All products in a bundle must belong to the same category and sub-category.",
+            variant: "destructive",
+          })
+          return
+        }
+      }
+
       const originalPrice = bundleProducts.reduce((sum, product) => sum + product.basePrice, 0)
-      
-      // Determine category based on selected products
-      const categories = [...new Set(bundleProducts.map(p => p.category))]
-      const category = categories.length === 1 ? categories[0].toLowerCase() : 'mixed'
 
       const bundleData = {
         ...values,
         bundlePrice: Number.parseFloat(values.bundlePrice),
         products: selectedProducts, // Send just the product IDs
         originalPrice,
-        category, // Set the category
+        category: bundleProducts[0].category,
+        subCategory: bundleProducts[0].subCategory,
         createdAt: editingBundle?.createdAt || new Date().toISOString(),
       }
 
@@ -186,10 +211,38 @@ export function BundlesPage() {
   }
 
   const toggleProductSelection = (productId: string) => {
-    setSelectedProducts((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
-    )
+    setSelectedProducts((prev) => {
+      const newSelectedProducts = prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+
+      if (newSelectedProducts.length === 0) {
+        setSelectedCategory(null)
+        setSelectedSubCategory(null)
+      } else if (prev.length === 0 && newSelectedProducts.length === 1) {
+        const firstProduct = products.find((p) => p._id === newSelectedProducts[0])
+        if (firstProduct) {
+          setSelectedCategory(firstProduct.category)
+          setSelectedSubCategory(firstProduct.subCategory)
+        }
+      }
+      return newSelectedProducts
+    })
   }
+
+  const uniqueCategories = [...new Set(products.map((p) => p.category))]
+  const uniqueSubCategories = selectedCategory
+    ? [...new Set(products.filter((p) => p.category === selectedCategory).map((p) => p.subCategory))]
+    : []
+  const filteredProducts = products.filter((product) => {
+    if (selectedCategory && product.category !== selectedCategory) {
+      return false
+    }
+    if (selectedSubCategory && product.subCategory !== selectedSubCategory) {
+      return false
+    }
+    return true
+  })
 
   const calculateSavings = (originalPrice: number, bundlePrice: number) => {
     const savings = originalPrice - bundlePrice
@@ -303,38 +356,59 @@ export function BundlesPage() {
                   />
                 </div>
 
-                <div>
-                  <FormLabel className="text-base font-medium">Select Products (Must be at least 2 products from any category)</FormLabel>
-                  
-                              {/* Category Filter */}
-            <div className="mt-2 mb-3">
-              <div className="text-sm font-medium mb-2">Filter by Category:</div>
-              <div className="flex space-x-2">
-                {['Men', 'Women'].map((category) => {
-                  const categoryProducts = products.filter(p => p.category === category)
-                  const selectedCategoryProducts = selectedProducts.filter(id =>
-                    products.find(p => p._id === id)?.category === category
-                  )
-                        
-                        return (
-                          <div key={category} className="flex items-center space-x-2">
-                            <span className="text-sm capitalize">{category}:</span>
-                            <span className="text-sm text-muted-foreground">
-                              {selectedCategoryProducts.length} selected of {categoryProducts.length} available
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
+                <div className="space-y-4">
+                  <FormLabel className="text-base font-medium">Select Products</FormLabel>
+                  <p className="text-sm text-muted-foreground">
+                    All products in a bundle must be from the same category and sub-category. Select the first product to lock the categories.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <select
+                          value={selectedCategory || ""}
+                          onChange={(e) => {
+                            setSelectedCategory(e.target.value || null)
+                            setSelectedSubCategory(null)
+                          }}
+                          className="w-full p-2 border rounded-md"
+                          disabled={selectedProducts.length > 0}
+                        >
+                          <option value="">All Categories</option>
+                          {uniqueCategories.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>Sub-category</FormLabel>
+                      <FormControl>
+                        <select
+                          value={selectedSubCategory || ""}
+                          onChange={(e) => setSelectedSubCategory(e.target.value || null)}
+                          className="w-full p-2 border rounded-md"
+                          disabled={!selectedCategory || selectedProducts.length > 0}
+                        >
+                          <option value="">All Sub-categories</option>
+                          {uniqueSubCategories.map((subCat) => (
+                            <option key={subCat} value={subCat}>{subCat}</option>
+                          ))}
+                        </select>
+                      </FormControl>
+                    </FormItem>
                   </div>
-                  
+
                   <div className="mt-2 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                    {products.map((product) => {
+                    {filteredProducts.map((product) => {
                       const isSelected = selectedProducts.includes(product._id)
                       const selectedCategoryProducts = selectedProducts.filter(id => 
                         products.find(p => p._id === id)?.category === product.category
                       )
-                      const isDisabled = false // Allow unlimited products from any category
+                      const isDisabled =
+                        selectedProducts.length > 0 &&
+                        (product.category !== selectedCategory || product.subCategory !== selectedSubCategory)
                       
                       return (
                         <div key={product._id} className={`flex items-center space-x-3 p-2 hover:bg-muted rounded ${isDisabled ? 'opacity-50' : ''}`}>
