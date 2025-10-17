@@ -184,6 +184,13 @@ export interface User {
 export interface Settings {
   _id: string
   currency: string
+  homepageImage1?: string
+  homepageImage2?: string
+  homepageImage3?: string
+  homepageImage4?: string
+  homepageImage5?: string
+  homepageImage6?: string
+  homepageImage7?: string
 }
 
 export interface ShippingRule {
@@ -1208,12 +1215,12 @@ export const settingsAPI = {
   updateSettings: async (formData: FormData): Promise<Settings> => {
     try {
       const settingsData = JSON.parse(formData.get("settingsData") as string)
-      // Use the public currency endpoint for updates
-      const response = await apiCall('/settings/currency', {
+      // Use the general settings update endpoint
+      const response = await apiCall('/settings', {
         method: 'PUT',
         body: JSON.stringify(settingsData),
       });
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error updating settings:', error);
       // Fallback to mock data if API fails
@@ -1516,6 +1523,13 @@ let mockUsers: User[] = [
 let mockSettings: Settings = {
   _id: "1",
   currency: "USD",
+  homepageImage1: "",
+  homepageImage2: "",
+  homepageImage3: "",
+  homepageImage4: "",
+  homepageImage5: "",
+  homepageImage6: "",
+  homepageImage7: "",
 }
 
 let mockShippingRules: ShippingRule[] = [

@@ -11,6 +11,7 @@ import { BundlesPage } from "@/components/bundles/bundles-page"
 import { ShippingPage } from "@/components/shipping/shipping-page"
 import { UsersPage } from "@/components/users/users-page"
 import { SettingsPage } from "@/components/settings/settings-page"
+import { HomepageImagesSection } from "@/components/homepage-images-section"
 
 interface DashboardContentProps {
   activeSection: string
@@ -35,6 +36,8 @@ export function DashboardContent({ activeSection }: DashboardContentProps) {
         return <CouponsPage />
       case "bundles":
         return <BundlesPage />
+      case "homepage-images":
+        return <HomepageImagesSection />
       case "shipping":
         return <ShippingPage />
       case "users":

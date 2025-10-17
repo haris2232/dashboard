@@ -13,6 +13,7 @@ import {
   UserCog,
   Settings,
   LogOut,
+  Image,
   Truck,
   Package2,
 } from "lucide-react"
@@ -30,10 +31,12 @@ const menuItems = [
   { id: "reviews", label: "Reviews", icon: Star },
   { id: "categories", label: "Categories", icon: Tag },
   { id: "coupons", label: "Coupons", icon: Gift },
+  { id: "homepage-images", label: "Homepage Images", icon: Image },
   { id: "bundles", label: "Bundles", icon: Package2 },
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "users", label: "Users", icon: UserCog },
   { id: "settings", label: "Settings", icon: Settings },
+  
 ]
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {

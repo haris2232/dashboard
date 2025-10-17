@@ -21,6 +21,7 @@ import CouponScreen from "./src/screens/CouponScreen"
 import BundleScreen from "./src/screens/BundleScreen"
 import SettingsScreen from "./src/screens/SettingsScreen"
 import UserManagementScreen from "./src/screens/UserManagementScreen"
+import HomepageImagesScreen from "./src/screens/HomepageImagesScreen"
 
 // Components
 import DrawerContent from "./src/components/DrawerContent"
@@ -56,6 +57,7 @@ const AppDrawer = () => {
           <Drawer.Screen name="Categories" component={CategoryScreen} options={{ title: "Categories" }} />
           <Drawer.Screen name="Bundles" component={BundleScreen} options={{ title: "Bundles & Offers" }} />
           <Drawer.Screen name="Coupons" component={CouponScreen} options={{ title: "Coupons" }} />
+          <Drawer.Screen name="HomepageImages" component={HomepageImagesScreen} options={{ title: "Homepage Images" }} />
         </>
       )}
 
