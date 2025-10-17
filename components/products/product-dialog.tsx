@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { productAPI, type Product, type ProductVariant } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-import { X, Plus, Star, Upload, Palette, ImageIcon, Trash2, MoveUp, MoveDown } from "lucide-react"
+import { X, Plus, Star, Upload, Palette, ImageIcon, Trash2, MoveUp, MoveDown, Ruler } from "lucide-react"
 import { subCategoryAPI } from "@/lib/subCategoryAPI"
 
 const API_BASE_URL = "https://athlekt.com/backendnew";
@@ -36,6 +36,7 @@ const formSchema = z.object({
   isActive: z.boolean(),
   isProductHighlight: z.boolean(),
   highlightImage: z.string().optional(),
+  sizeGuideImage: z.string().optional(),
 })
 
 interface ProductDialogProps {
@@ -65,6 +66,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [colorInputType, setColorInputType] = useState<"hex" | "image">("hex")
   const [uploadingImages, setUploadingImages] = useState(false)
   const [uploadingColorImage, setUploadingColorImage] = useState(false)
+  const [uploadingSizeGuide, setUploadingSizeGuide] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const [subCategories, setSubCategories] = useState<any[]>([])
@@ -118,6 +120,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       isActive: true,
       isProductHighlight: false,
       highlightImage: "",
+      sizeGuideImage: "",
     },
   })
 
@@ -148,6 +151,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         isActive: product.isActive,
         isProductHighlight: product.isProductHighlight || false,
         highlightImage: product.highlightImage ? (product.highlightImage.startsWith('http') ? new URL(product.highlightImage).pathname : product.highlightImage) : "",
+        sizeGuideImage: product.sizeGuideImage ? (product.sizeGuideImage.startsWith('http') ? new URL(product.sizeGuideImage).pathname : product.sizeGuideImage) : "",
       })
       // Ensure we store relative paths, not full URLs
       const imagePaths = product.images ? product.images.map(img => {
@@ -180,6 +184,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         isActive: true,
         isProductHighlight: false,
         highlightImage: "",
+        sizeGuideImage: "",
       })
       setImages([])
       setSizeOptions([])
@@ -237,7 +242,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       setUploadingImages(false)
     }
   }
-
+ 
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index))
   }
@@ -338,6 +343,32 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     }
   };
 
+  const handleSizeGuideUpload = async (file: File) => {
+    if (!file) return;
+    try {
+      setUploadingSizeGuide(true);
+      const uploadedUrls = await productAPI.uploadImages([file]);
+      if (uploadedUrls && uploadedUrls.length > 0) {
+        form.setValue("sizeGuideImage", uploadedUrls[0], { shouldValidate: true });
+        toast({
+          title: "Success",
+          description: "Size guide image uploaded successfully.",
+        });
+      } else {
+        throw new Error("API did not return a URL for the uploaded image.");
+      }
+    } catch (error) {
+      console.error('Error uploading size guide image:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload size guide image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingSizeGuide(false);
+    }
+  };
+
   const updateVariant = (variantId: string, updates: Partial<ProductVariant>) => {
     setVariants(variants.map((v) => (v.id === variantId ? { ...v, ...updates } : v)))
   }
@@ -378,6 +409,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
          defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
          images: images.length > 0 ? images : (product?.images || []),
          highlightImage: values.isProductHighlight ? values.highlightImage || null : null,
+         sizeGuideImage: values.sizeGuideImage || null,
        }
 
       if (product) {
@@ -418,7 +450,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         <DialogHeader>
           <DialogTitle>{product ? "Edit Product" : "Add Product"}</DialogTitle>
           <DialogDescription>
-            {product ? "Update product information and variants" : "Create a new product with size and color variants"}
+            {product ? "Update product information and variants" : "Add a new product with all its details, variations, and media."}
           </DialogDescription>
         </DialogHeader>
 
@@ -554,6 +586,59 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                         <FormMessage />
                     </FormItem>
                     )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sizeGuideImage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Product Size Guide</FormLabel>
+                      <FormControl>
+                        <Card>
+                          <CardContent className="p-4 space-y-4">
+                            {field.value ? (
+                              <div className="relative w-48">
+                                <img
+                                  src={getFullImageUrl(field.value)}
+                                  alt="Size guide"
+                                  className="w-full h-auto rounded-md border"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                  onClick={() => field.onChange("")}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  id="size-guide-input"
+                                  disabled={uploadingSizeGuide}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleSizeGuideUpload(file);
+                                  }}
+                                />
+                                <Button type="button" variant="outline" onClick={() => document.getElementById('size-guide-input')?.click()} disabled={uploadingSizeGuide}>
+                                  <Ruler className="h-4 w-4 mr-2" />
+                                  {uploadingSizeGuide ? "Uploading..." : "Upload Size Guide"}
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
 
                 <FormField
