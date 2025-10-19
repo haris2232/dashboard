@@ -191,6 +191,8 @@ export interface Settings {
   homepageImage5?: string
   homepageImage6?: string
   homepageImage7?: string
+  salesImage1?: string
+  salesImage2?: string
 }
 
 export interface ShippingRule {
@@ -1530,6 +1532,8 @@ let mockSettings: Settings = {
   homepageImage5: "",
   homepageImage6: "",
   homepageImage7: "",
+  salesImage1: "",
+  salesImage2: "",
 }
 
 let mockShippingRules: ShippingRule[] = [

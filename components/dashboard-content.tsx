@@ -12,6 +12,7 @@ import { ShippingPage } from "@/components/shipping/shipping-page"
 import { UsersPage } from "@/components/users/users-page"
 import { SettingsPage } from "@/components/settings/settings-page"
 import { HomepageImagesSection } from "@/components/homepage-images-section"
+import { SalesPageSection } from "@/components/sales-page-section" // This path is now correct.
 
 interface DashboardContentProps {
   activeSection: string
@@ -38,6 +39,8 @@ export function DashboardContent({ activeSection }: DashboardContentProps) {
         return <BundlesPage />
       case "homepage-images":
         return <HomepageImagesSection />
+      case "sales-page":
+        return <SalesPageSection />
       case "shipping":
         return <ShippingPage />
       case "users":

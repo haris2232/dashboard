@@ -15,6 +15,7 @@ import {
   LogOut,
   Image,
   Truck,
+  Percent,
   Package2,
 } from "lucide-react"
 
@@ -32,6 +33,7 @@ const menuItems = [
   { id: "categories", label: "Categories", icon: Tag },
   { id: "coupons", label: "Coupons", icon: Gift },
   { id: "homepage-images", label: "Homepage Images", icon: Image },
+  { id: "sales-page", label: "Sales Page", icon: Percent },
   { id: "bundles", label: "Bundles", icon: Package2 },
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "users", label: "Users", icon: UserCog },
