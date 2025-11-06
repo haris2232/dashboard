@@ -75,16 +75,23 @@ export function HomepageImagesPage() {
       }
 
       const result = await response.json();
-      setSettings((prev) => ({ ...prev, [field]: result.imageUrl }));
+      setSettings((prev) => {
+        const updated = { ...prev, [field]: result.imageUrl };
+        // If uploading to homepageImage1, also set the type
+        if (field === 'homepageImage1' && result.fileType) {
+          updated.homepageImage1Type = result.fileType as 'image' | 'video';
+        }
+        return updated;
+      });
       toast({
         title: "Success",
-        description: `Image for ${field} uploaded successfully.`,
+        description: `${result.fileType === 'video' ? 'Video' : 'Image'} for ${field} uploaded successfully.`,
       });
     } catch (error: any) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading file:", error);
       toast({
         title: "Upload Failed",
-        description: error.message || "Failed to upload image. Please try again.",
+        description: error.message || "Failed to upload file. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -152,11 +159,19 @@ export function HomepageImagesPage() {
               <div className="border-2 border-dashed rounded-lg p-4 text-center relative aspect-video flex items-center justify-center">
                 {settings[field] ? (
                   <>
-                    <img
-                      src={getFullImageUrl(settings[field] as string)}
-                      alt={`Homepage Image ${index + 1}`}
-                      className="w-full h-full object-cover rounded-md"
-                    />
+                    {field === "homepageImage1" && settings.homepageImage1Type === "video" ? (
+                      <video
+                        src={getFullImageUrl(settings[field] as string)}
+                        className="w-full h-full object-cover rounded-md"
+                        controls
+                      />
+                    ) : (
+                      <img
+                        src={getFullImageUrl(settings[field] as string)}
+                        alt={`Homepage Image ${index + 1}`}
+                        className="w-full h-full object-cover rounded-md"
+                      />
+                    )}
                     <Button
                       type="button"
                       variant="destructive"
@@ -170,13 +185,13 @@ export function HomepageImagesPage() {
                 ) : (
                   <div className="text-center text-muted-foreground">
                     <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No image uploaded</p>
+                    <p>No {field === "homepageImage1" ? "image/video" : "image"} uploaded</p>
                   </div>
                 )}
               </div>
               <input
                 type="file"
-                accept="image/*"
+                accept={field === "homepageImage1" ? "image/*,video/*" : "image/*"}
                 className="hidden"
                 ref={(el) => (fileInputRefs.current[index] = el)}
                 onChange={(e) => {
@@ -192,7 +207,7 @@ export function HomepageImagesPage() {
                 disabled={!!uploading}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {uploading === field ? "Uploading..." : "Upload Image"}
+                {uploading === field ? "Uploading..." : field === "homepageImage1" ? "Upload Image/Video" : "Upload Image"}
               </Button>
             </div>
           ))}

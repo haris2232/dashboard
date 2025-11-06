@@ -185,6 +185,7 @@ export interface Settings {
   _id: string
   currency: string
   homepageImage1?: string
+  homepageImage1Type?: 'image' | 'video'
   homepageImage2?: string
   homepageImage3?: string
   homepageImage4?: string
