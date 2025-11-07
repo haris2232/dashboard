@@ -278,6 +278,8 @@ export function CategoryDialog({ open, onOpenChange, category, onSuccess }: Cate
                 <option value="">Select category</option>
                 <option value="Men">Men</option>
                 <option value="Women">Women</option>
+                <option value="New Arrivals">New Arrivals</option>
+                <option value="Sets">Sets</option>
               </select>
             </div>
 

@@ -1217,13 +1217,33 @@ export const settingsAPI = {
   },
   updateSettings: async (formData: FormData): Promise<Settings> => {
     try {
-      const settingsData = JSON.parse(formData.get("settingsData") as string)
-      // Use the general settings update endpoint
-      const response = await apiCall('/settings', {
+      // Extract settingsData from FormData and send as JSON
+      const settingsDataString = formData.get("settingsData") as string;
+      const settingsData = JSON.parse(settingsDataString);
+      
+      // Backend expects JSON body with settingsData field containing JSON string
+      const url = `${API_BASE_URL}/settings`;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const response = await fetch(url, {
         method: 'PUT',
-        body: JSON.stringify(settingsData),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          settingsData: settingsDataString // Send as JSON string in settingsData field
+        }),
       });
-      return response.data;
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.error || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      return result;
     } catch (error) {
       console.error('Error updating settings:', error);
       // Fallback to mock data if API fails
@@ -1325,6 +1345,93 @@ export const shippingAPI = {
       method: 'POST',
       body: JSON.stringify(data)
     })
+  },
+}
+
+export interface Blog {
+  _id: string
+  adminName: string
+  url: string
+  content: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export const blogAPI = {
+  getBlogs: async (): Promise<{ data: Blog[] }> => {
+    return apiCall('/blogs')
+  },
+  getBlogById: async (id: string): Promise<{ data: Blog }> => {
+    return apiCall(`/blogs/${id}`)
+  },
+  createBlog: async (data: Omit<Blog, "_id" | "createdAt" | "updatedAt">): Promise<{ blog: Blog }> => {
+    return apiCall('/blogs', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  updateBlog: async (id: string, data: Partial<Blog>): Promise<{ blog: Blog }> => {
+    return apiCall(`/blogs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  },
+  deleteBlog: async (id: string): Promise<void> => {
+    return apiCall(`/blogs/${id}`, {
+      method: 'DELETE'
+    })
+  },
+  toggleBlogStatus: async (id: string): Promise<{ blog: Blog }> => {
+    return apiCall(`/blogs/${id}/toggle`, {
+      method: 'PUT'
+    })
+  },
+  getActiveBlogs: async (): Promise<{ success: boolean; data: Blog[] }> => {
+    return apiCall('/blogs/public/active')
+  },
+}
+
+export interface CarouselImage {
+  _id: string
+  imageUrl: string
+  order: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export const carouselImageAPI = {
+  getCarouselImages: async (): Promise<{ data: CarouselImage[] }> => {
+    return apiCall('/carousel-images')
+  },
+  getCarouselImageById: async (id: string): Promise<{ data: CarouselImage }> => {
+    return apiCall(`/carousel-images/${id}`)
+  },
+  createCarouselImage: async (data: Omit<CarouselImage, "_id" | "createdAt" | "updatedAt">): Promise<{ image: CarouselImage }> => {
+    return apiCall('/carousel-images', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+  updateCarouselImage: async (id: string, data: Partial<CarouselImage>): Promise<{ image: CarouselImage }> => {
+    return apiCall(`/carousel-images/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  },
+  deleteCarouselImage: async (id: string): Promise<void> => {
+    return apiCall(`/carousel-images/${id}`, {
+      method: 'DELETE'
+    })
+  },
+  toggleCarouselImageStatus: async (id: string): Promise<{ image: CarouselImage }> => {
+    return apiCall(`/carousel-images/${id}/toggle`, {
+      method: 'PUT'
+    })
+  },
+  getActiveCarouselImages: async (): Promise<{ success: boolean; data: CarouselImage[] }> => {
+    return apiCall('/carousel-images/public/active')
   },
 }
 
@@ -1605,4 +1712,6 @@ export default {
   userAPI,
   dashboardAPI,
   shippingAPI,
+  blogAPI,
+  carouselImageAPI,
 }

@@ -32,6 +32,7 @@ export function HomepageImagesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -99,8 +100,42 @@ export function HomepageImagesPage() {
     }
   };
 
-  const removeImage = (field: keyof Settings) => {
-    setSettings((prev) => ({ ...prev, [field]: "" }));
+  const removeImage = async (field: keyof Settings) => {
+    if (!settings[field]) return; // Nothing to delete
+    
+    setDeleting(field);
+    // Save current state for potential revert
+    const previousSettings = { ...settings };
+    
+    try {
+      // Update local state first for immediate UI feedback
+      const updatedSettings = { ...settings, [field]: "" };
+      // Also clear homepageImage1Type if deleting homepageImage1
+      if (field === 'homepageImage1') {
+        updatedSettings.homepageImage1Type = 'image';
+      }
+      setSettings(updatedSettings);
+      
+      // Save to database
+      const formData = new FormData();
+      formData.append("settingsData", JSON.stringify(updatedSettings));
+      await settingsAPI.updateSettings(formData);
+      
+      toast({
+        title: "Success",
+        description: `Image deleted successfully.`,
+      });
+    } catch (error) {
+      // Revert local state on error
+      setSettings(previousSettings);
+      toast({
+        title: "Error",
+        description: "Failed to delete image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const handleSave = async () => {
@@ -136,10 +171,6 @@ export function HomepageImagesPage() {
     "homepageImage1",
     "homepageImage2",
     "homepageImage3",
-    "homepageImage4",
-    "homepageImage5",
-    "homepageImage6",
-    "homepageImage7",
   ];
 
   return (
@@ -147,8 +178,8 @@ export function HomepageImagesPage() {
       <CardHeader>
         <CardTitle>Homepage Images</CardTitle>
         <CardDescription>
-          Manage the main images displayed on your homepage. Upload 7 images for
-          different sections.
+          Manage the main images displayed on your homepage. Upload 3 images:
+          Image 1 for hero section, Images 2 & 3 for banner carousel.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -178,8 +209,14 @@ export function HomepageImagesPage() {
                       size="icon"
                       className="absolute top-2 right-2 h-7 w-7"
                       onClick={() => removeImage(field)}
+                      disabled={!!deleting || !!uploading}
+                      title="Delete image"
                     >
-                      <X className="h-4 w-4" />
+                      {deleting === field ? (
+                        <LoadingSpinner />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
                     </Button>
                   </>
                 ) : (
