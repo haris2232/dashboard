@@ -36,6 +36,7 @@ const menuItems = [
   { id: "coupons", label: "Coupons", icon: Gift },
   { id: "homepage-images", label: "Homepage Images", icon: Image },
   { id: "sales-page", label: "Sales Page", icon: Percent },
+  { id: "community-highlights", label: "Community Highlights", icon: Images },
   { id: "bundles", label: "Bundles", icon: Package2 },
   { id: "blogs", label: "Blogs", icon: FileText },
   { id: "images", label: "Images", icon: Images },

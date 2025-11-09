@@ -54,6 +54,7 @@ export interface Product {
   discountPercentage?: number
   images: string[]
   highlightImage?: string
+  sizeGuideImage?: string
   isActive: boolean
   createdAt: string
   // Variation options
@@ -194,6 +195,15 @@ export interface Settings {
   homepageImage7?: string
   salesImage1?: string
   salesImage2?: string
+  communityHighlight1?: string
+  communityHighlight2?: string
+  communityHighlight3?: string
+  communityHighlight4?: string
+  communityHighlight5?: string
+  communityHighlight6?: string
+  communityHighlight7?: string
+  communityHighlight8?: string
+  communityHighlight9?: string
 }
 
 export interface ShippingRule {
@@ -259,6 +269,7 @@ const mockProducts: Product[] = [
       },
     ],
     defaultVariant: "v2",
+    sizeGuideImage: "",
   },
   {
     _id: "2",
@@ -287,6 +298,7 @@ const mockProducts: Product[] = [
       },
     ],
     defaultVariant: "v5",
+    sizeGuideImage: "",
   },
   {
     _id: "3",
@@ -315,6 +327,7 @@ const mockProducts: Product[] = [
       },
     ],
     defaultVariant: "v6",
+    sizeGuideImage: "",
   },
 ];
 
@@ -336,6 +349,8 @@ export const productAPI = {
           description: product.description,
           discountPercentage: product.discountPercentage || 0,
           images: product.images || [],
+          highlightImage: product.highlightImage,
+          sizeGuideImage: product.sizeGuideImage,
           isActive: product.isActive,
           createdAt: product.createdAt,
           sizeOptions: product.sizeOptions || [],
@@ -367,6 +382,8 @@ export const productAPI = {
           description: product.description,
           discountPercentage: product.discountPercentage || 0,
           images: product.images || [],
+          highlightImage: product.highlightImage,
+          sizeGuideImage: product.sizeGuideImage,
           isActive: product.isActive,
           createdAt: product.createdAt,
           sizeOptions: product.sizeOptions || [],
@@ -1353,6 +1370,7 @@ export interface Blog {
   adminName: string
   url: string
   content: string
+  coverImage?: string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -1642,6 +1660,15 @@ let mockSettings: Settings = {
   homepageImage7: "",
   salesImage1: "",
   salesImage2: "",
+  communityHighlight1: "",
+  communityHighlight2: "",
+  communityHighlight3: "",
+  communityHighlight4: "",
+  communityHighlight5: "",
+  communityHighlight6: "",
+  communityHighlight7: "",
+  communityHighlight8: "",
+  communityHighlight9: "",
 }
 
 let mockShippingRules: ShippingRule[] = [

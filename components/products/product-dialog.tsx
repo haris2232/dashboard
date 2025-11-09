@@ -409,7 +409,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
          defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
          images: images.length > 0 ? images : (product?.images || []),
          highlightImage: values.isProductHighlight ? values.highlightImage || null : null,
-         sizeGuideImage: values.sizeGuideImage || null,
+         sizeGuideImage: values.sizeGuideImage || "",
        }
 
       if (product) {
