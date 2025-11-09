@@ -60,7 +60,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   >([])
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [defaultVariant, setDefaultVariant] = useState<string>("")
-  const [newSize, setNewSize] = useState("")
   const [newColorName, setNewColorName] = useState("")
   const [newColorValue, setNewColorValue] = useState("#000000")
   const [colorInputType, setColorInputType] = useState<"hex" | "image">("hex")
@@ -256,10 +255,22 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     }
   }
 
-  const addSize = () => {
-    if (newSize && !sizeOptions.includes(newSize.trim().toUpperCase())) {
-      setSizeOptions([...sizeOptions, newSize.trim().toUpperCase()])
-      setNewSize("")
+  const PRESET_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] satisfies string[];
+
+  const normalizeSize = (value: string) => value.trim().toUpperCase()
+
+  const addSize = (value: string) => {
+    const normalized = normalizeSize(value)
+    if (normalized && !sizeOptions.includes(normalized)) {
+      setSizeOptions([...sizeOptions, normalized])
+    }
+  }
+
+  const togglePresetSize = (size: string) => {
+    if (sizeOptions.includes(size)) {
+      setSizeOptions(sizeOptions.filter((s) => s !== size))
+    } else {
+      addSize(size)
     }
   }
 
@@ -899,16 +910,21 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       <CardDescription>Add available sizes</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex space-x-2">
-                        <Input
-                          placeholder="e.g., S, M, L"
-                          value={newSize}
-                          onChange={(e) => setNewSize(e.target.value)}
-                          onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSize())}
-                        />
-                        <Button type="button" onClick={addSize}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                      <div className="flex flex-wrap gap-2">
+                        {PRESET_SIZES.map((size) => {
+                          const isSelected = sizeOptions.includes(size)
+                          return (
+                            <Button
+                              key={size}
+                              type="button"
+                              size="sm"
+                              variant={isSelected ? "default" : "outline"}
+                              onClick={() => togglePresetSize(size)}
+                            >
+                              {size}
+                            </Button>
+                          )
+                        })}
                       </div>
                       <div className="flex flex-wrap gap-2 min-h-[60px] p-3 border rounded-md bg-muted/20">
                         {sizeOptions.length > 0 ? (

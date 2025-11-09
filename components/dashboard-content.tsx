@@ -14,6 +14,8 @@ import { SettingsPage } from "@/components/settings/settings-page"
 import { HomepageImagesSection } from "@/components/homepage-images-section"
 import { SalesPageSection } from "@/components/sales-page-section" // This path is now correct.
 import { CommunityHighlightsSection } from "@/components/community-highlights-section"
+import { DiscoverYourFitSection } from "@/components/discover-your-fit-section"
+import { CategoryBannersSection } from "@/components/category-banners-section"
 import { BlogsPage } from "@/components/blogs/blogs-page"
 import { ImagesPage } from "@/components/images/images-page"
 
@@ -44,6 +46,10 @@ export function DashboardContent({ activeSection }: DashboardContentProps) {
         return <HomepageImagesSection />
       case "sales-page":
         return <SalesPageSection />
+      case "discover-your-fit":
+        return <DiscoverYourFitSection />
+      case "category-banners":
+        return <CategoryBannersSection />
       case "community-highlights":
         return <CommunityHighlightsSection />
       case "blogs":

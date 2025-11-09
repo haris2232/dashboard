@@ -62,6 +62,7 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
   const [adminName, setAdminName] = useState("")
   const [url, setUrl] = useState("")
   const [content, setContent] = useState("")
+  const [urlTouched, setUrlTouched] = useState(false)
   const [isActive, setIsActive] = useState(true)
   const [coverImage, setCoverImage] = useState("")
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -70,10 +71,40 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  const formatDisplayUrl = (storedUrl: string): string => {
+    if (!storedUrl) return ""
+    const trimmed = storedUrl.trim()
+    if (trimmed.startsWith("http")) return trimmed
+    if (trimmed.startsWith("/blog/")) return trimmed
+    if (trimmed.startsWith("/")) return `/blog${trimmed}`
+    if (trimmed.startsWith("blog/")) return `/${trimmed}`
+    return `/blog/${trimmed}`
+  }
+
+  const normalizeUrlForSaving = (rawValue: string): string => {
+    const trimmed = rawValue.trim().toLowerCase()
+    if (!trimmed) return ""
+
+    const withoutDomain = trimmed.replace(/^https?:\/\/[^/]+/i, "")
+    let slug = withoutDomain.replace(/^\/+/, "")
+
+    if (slug.startsWith("blog/")) {
+      slug = slug.slice(5)
+    }
+
+    slug = slug
+      .replace(/['"]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+
+    return slug
+  }
+
   useEffect(() => {
     if (blog) {
       setAdminName(blog.adminName)
-      setUrl(blog.url)
+      setUrl(formatDisplayUrl(blog.url))
+      setUrlTouched(true)
       setContent(blog.content)
       setIsActive(blog.isActive)
       setCoverImage(
@@ -84,11 +115,18 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
     } else {
       setAdminName("")
       setUrl("")
+      setUrlTouched(false)
       setContent("")
       setIsActive(true)
       setCoverImage("")
     }
   }, [blog, open])
+
+  const generateSlug = (value: string) => {
+    const slug = normalizeUrlForSaving(value)
+    if (!slug) return ""
+    return `/blog/${slug}`
+  }
 
   const insertTag = (tag: QuickTag) => {
     const textarea = textareaRef.current
@@ -196,7 +234,9 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!adminName.trim() || !url.trim() || !content.trim()) {
+    const normalizedUrl = normalizeUrlForSaving(url)
+
+    if (!adminName.trim() || !normalizedUrl || !content.trim()) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -209,7 +249,7 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
       setLoading(true)
       const blogData = {
         adminName: adminName.trim(),
-        url: url.trim(),
+        url: normalizedUrl,
         content: content.trim(),
         coverImage: coverImage || "",
         isActive,
@@ -258,7 +298,13 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
             <Input
               id="adminName"
               value={adminName}
-              onChange={(e) => setAdminName(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                setAdminName(value)
+                if (!blog && !urlTouched) {
+                  setUrl(generateSlug(value))
+                }
+              }}
               placeholder="Enter admin name"
               required
             />
@@ -269,7 +315,10 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
             <Input
               id="url"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value)
+                setUrlTouched(true)
+              }}
               placeholder="Enter blog URL (e.g., /blog/my-post)"
               required
             />

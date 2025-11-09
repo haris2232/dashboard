@@ -195,6 +195,14 @@ export interface Settings {
   homepageImage7?: string
   salesImage1?: string
   salesImage2?: string
+  discoverYourFitMen?: string
+  discoverYourFitWomen?: string
+  discoverYourFitNewArrivals?: string
+  discoverYourFitSets?: string
+  categoriesMenBackground?: string
+  categoriesMenForeground?: string
+  categoriesWomenBackground?: string
+  categoriesWomenForeground?: string
   communityHighlight1?: string
   communityHighlight2?: string
   communityHighlight3?: string
@@ -1660,6 +1668,14 @@ let mockSettings: Settings = {
   homepageImage7: "",
   salesImage1: "",
   salesImage2: "",
+  discoverYourFitMen: "",
+  discoverYourFitWomen: "",
+  discoverYourFitNewArrivals: "",
+  discoverYourFitSets: "",
+  categoriesMenBackground: "",
+  categoriesMenForeground: "",
+  categoriesWomenBackground: "",
+  categoriesWomenForeground: "",
   communityHighlight1: "",
   communityHighlight2: "",
   communityHighlight3: "",
