@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { bundleAPI, type Bundle } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
@@ -42,6 +43,16 @@ const bundleSchema = z.object({
   endDate: z.string().optional(),
   isActive: z.boolean(),
 })
+
+interface BundleVariant {
+  id: string;
+  pack: string;
+  color: string;
+  size: string;
+  sku: string;
+  price: number;
+  isActive: boolean;
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://athlekt.com/backendnew/api"
 const UPLOAD_BASE_URL = API_BASE_URL.replace(/\/api$/, "")
@@ -129,6 +140,8 @@ export function BundlesPage() {
   const [uploadingPackImageId, setUploadingPackImageId] = useState<string | null>(null)
   const [uploadingColorThumbnailId, setUploadingColorThumbnailId] = useState<string | null>(null)
   const [uploadingColorGalleryId, setUploadingColorGalleryId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("details")
+  const [variants, setVariants] = useState<BundleVariant[]>([])
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof bundleSchema>>({
@@ -155,6 +168,39 @@ export function BundlesPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    // Generate variants when options change
+    if (packOptions.length > 0 && colorOptions.length > 0 && sizeOptions.length > 0) {
+      const newVariants: BundleVariant[] = []
+      packOptions.forEach(pack => {
+        colorOptions.forEach(color => {
+          sizeOptions.forEach(size => {
+            const id = `variant-${pack.name}-${color.name}-${size}`.replace(/\s+/g, '-').toLowerCase();
+            const existingVariant = variants.find(v => v.id === id);
+            
+            if (existingVariant) {
+              newVariants.push(existingVariant);
+            } else {
+              const baseSku = form.getValues('productSlug') || 'BUNDLE';
+              newVariants.push({
+                id,
+                pack: pack.name,
+                color: color.name,
+                size: size,
+                sku: `${baseSku}-${pack.quantity}P-${color.name.substring(0,3).toUpperCase()}-${size}`,
+                price: Number(form.getValues('bundlePrice')) || 0,
+                isActive: true,
+              });
+            }
+          });
+        });
+      });
+      setVariants(newVariants);
+    } else {
+      setVariants([]);
+    }
+  }, [packOptions, colorOptions, sizeOptions, form]);
 
   const loadData = async () => {
     try {
@@ -558,6 +604,10 @@ export function BundlesPage() {
       setLengthOptions([...(bundle.lengthOptions || [])])
       setGuarantees(
         (bundle.guarantees || []).map((item) => ({
+          // The backend doesn't send an ID for guarantees, so we create one.
+          // This is safe because we reconstruct this array on every save.
+          // The `any` cast is to handle the potential lack of `_id` from the backend.
+          // @ts-ignore
           id: createId(),
           title: item.title || "",
           description: item.description || "",
@@ -576,6 +626,8 @@ export function BundlesPage() {
       setLengthOptions([])
       setGuarantees([])
     }
+    setVariants((bundle?.variants as BundleVariant[]) || [])
+    setActiveTab("details")
     setNewSizeValue("")
     setNewLengthValue("")
     setDialogOpen(true)
@@ -595,6 +647,11 @@ export function BundlesPage() {
     setGuarantees([])
     setNewSizeValue("")
     setNewLengthValue("")
+    setVariants([])
+  }
+
+  const updateVariant = (id: string, field: keyof BundleVariant, value: string | number | boolean) => {
+    setVariants(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
   }
 
   const onSubmit = async (values: z.infer<typeof bundleSchema>) => {
@@ -674,6 +731,7 @@ export function BundlesPage() {
         sizeOptions,
         sizePriceVariation: sizePricePayload,
         lengthOptions,
+        variants,
         guarantees: guaranteesPayload,
         ratingValue,
         reviewsCount,
@@ -776,10 +834,17 @@ export function BundlesPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="details">Details & Media</TabsTrigger>
+                <TabsTrigger value="options">Options</TabsTrigger>
+                <TabsTrigger value="variants">Variants</TabsTrigger>
+              </TabsList>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4">
+                  <TabsContent value="details" className="space-y-6 pt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
@@ -793,7 +858,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="bundlePrice"
                     render={({ field }) => (
@@ -808,8 +873,8 @@ export function BundlesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
                     control={form.control}
                     name="shortDescription"
                     render={({ field }) => (
@@ -823,7 +888,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="badgeText"
                     render={({ field }) => (
@@ -838,8 +903,8 @@ export function BundlesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
                     control={form.control}
                     name="productSlug"
                     render={({ field }) => (
@@ -853,7 +918,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="dealTag"
                     render={({ field }) => (
@@ -868,8 +933,8 @@ export function BundlesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
                     control={form.control}
                     name="ratingValue"
                     render={({ field }) => (
@@ -883,7 +948,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="reviewsCount"
                     render={({ field }) => (
@@ -898,8 +963,8 @@ export function BundlesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
                     control={form.control}
                     name="basePrice"
                     render={({ field }) => (
@@ -913,7 +978,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="discountedPrice"
                     render={({ field }) => (
@@ -927,7 +992,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="finalPrice"
                     render={({ field }) => (
@@ -942,8 +1007,8 @@ export function BundlesPage() {
                   />
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
-                  <div className="space-y-2">
+                    <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+                      <div className="space-y-2">
                     <FormLabel>Hero Image</FormLabel>
                     <div className="border border-dashed border-muted-foreground/40 rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/20">
                       {heroImage ? (
@@ -1002,8 +1067,8 @@ export function BundlesPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <FormLabel>Gallery Images</FormLabel>
+                      <div className="space-y-2">
+                        <FormLabel>Gallery Images</FormLabel>
                     <div className="border border-dashed border-muted-foreground/40 rounded-lg p-4 bg-muted/20">
                       <div className="flex flex-wrap gap-4">
                         {galleryImages.map((imageUrl) => (
@@ -1058,7 +1123,7 @@ export function BundlesPage() {
                   </div>
                 </div>
 
-                <FormField
+                    <FormField
                   control={form.control}
                   name="description"
                   render={({ field }) => (
@@ -1072,8 +1137,8 @@ export function BundlesPage() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
                     control={form.control}
                     name="startDate"
                     render={({ field }) => (
@@ -1087,7 +1152,7 @@ export function BundlesPage() {
                     )}
                   />
 
-                  <FormField
+                      <FormField
                     control={form.control}
                     name="endDate"
                     render={({ field }) => (
@@ -1101,8 +1166,10 @@ export function BundlesPage() {
                     )}
                   />
                 </div>
+                  </TabsContent>
 
-                <div className="space-y-4">
+                  <TabsContent value="options" className="space-y-6 pt-4">
+                    <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <FormLabel className="text-base font-medium">Pack Options</FormLabel>
                     <Button type="button" variant="secondary" onClick={addPackOption}>
@@ -1233,8 +1300,8 @@ export function BundlesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
                     <FormLabel className="text-base font-medium">Color Sets</FormLabel>
                     <Button type="button" variant="secondary" onClick={addColorOption}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -1399,8 +1466,8 @@ export function BundlesPage() {
                   </div>
                   </div>
 
-                <div className="space-y-4">
-                  <FormLabel className="text-base font-medium">Sizes</FormLabel>
+                    <div className="space-y-4">
+                      <FormLabel className="text-base font-medium">Sizes</FormLabel>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       value={newSizeValue}
@@ -1454,8 +1521,8 @@ export function BundlesPage() {
                   )}
                   </div>
                   
-                <div className="space-y-4">
-                  <FormLabel className="text-base font-medium">Length Options</FormLabel>
+                    <div className="space-y-4">
+                      <FormLabel className="text-base font-medium">Length Options</FormLabel>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       value={newLengthValue}
@@ -1488,8 +1555,8 @@ export function BundlesPage() {
                       )}
                     </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
                     <FormLabel className="text-base font-medium">Guarantee Highlights</FormLabel>
                     <Button type="button" variant="secondary" onClick={addGuarantee}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -1537,8 +1604,58 @@ export function BundlesPage() {
                     )}
                   </div>
                 </div>
+                  </TabsContent>
+                  <TabsContent value="variants" className="space-y-4 pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium">Bundle Variants</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Auto-generated variants from your options. Set SKU and price for each.
+                        </p>
+                      </div>
+                      <Badge variant="outline">{variants.length} variants</Badge>
+                    </div>
+                    {variants.length > 0 ? (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 border rounded-md p-2">
+                        {variants.map((variant) => (
+                          <Card key={variant.id}>
+                            <CardContent className="p-3">
+                              <div className="grid grid-cols-12 gap-3 items-center">
+                                <div className="col-span-5">
+                                  <p className="text-sm font-medium truncate">
+                                    {variant.pack} / {variant.color} / {variant.size}
+                                  </p>
+                                </div>
+                                <div className="col-span-4">
+                                  <Input
+                                    placeholder="Variant SKU"
+                                    value={variant.sku}
+                                    onChange={(e) => updateVariant(variant.id, 'sku', e.target.value)}
+                                    className="text-sm h-9"
+                                  />
+                                </div>
+                                <div className="col-span-3">
+                                  <Input
+                                    type="number"
+                                    placeholder="Price"
+                                    value={variant.price}
+                                    onChange={(e) => updateVariant(variant.id, 'price', Number(e.target.value))}
+                                    className="text-sm h-9"
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <p>No variants generated. Add packs, colors, and sizes to create variants.</p>
+                      </div>
+                    )}
+                  </TabsContent>
 
-                <FormField
+                  <FormField
                   control={form.control}
                   name="isActive"
                   render={({ field }) => (
@@ -1554,14 +1671,15 @@ export function BundlesPage() {
                   )}
                 />
 
-                <div className="flex justify-end space-x-2">
+                  <div className="flex justify-end space-x-2 pt-4 border-t">
                   <Button type="button" variant="outline" onClick={closeDialog}>
                     Cancel
                   </Button>
                   <Button type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
                 </div>
-              </form>
-            </Form>
+                </form>
+              </Form>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
@@ -1657,6 +1775,163 @@ export function BundlesPage() {
                         <div>
                           <h5 className="text-xs font-semibold uppercase text-muted-foreground">Sizes</h5>
                           <div className="mt-2 flex flex-wrap gap-2">
+                            {bundle.sizeOptions.map((size) => (
+                              <span
+                                key={size}
+                                className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-medium"
+                              >
+                                {size}
+                                {bundle.sizePriceVariation && bundle.sizePriceVariation[size] ? (
+                                  <span className="text-emerald-600">
+                                    +{formatCurrency(bundle.sizePriceVariation[size])}
+                        </span>
+                                ) : null}
+                              </span>
+                            ))}
+                      </div>
+                        </div>
+                      )}
+                      {bundle.lengthOptions && bundle.lengthOptions.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-semibold uppercase text-muted-foreground">Lengths</h5>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {bundle.lengthOptions.map((option) => (
+                              <span key={option} className="rounded-full border bg-muted px-3 py-1 text-xs font-medium">
+                                {option}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="mb-3 font-medium">Pricing Details</h4>
+                    <div className="space-y-2 text-sm">
+                      {typeof bundle.basePrice === "number" && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Base Price:</span>
+                          <span className="line-through">{formatCurrency(bundle.basePrice)}</span>
+                        </div>
+                      )}
+                      {typeof bundle.discountedPrice === "number" && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Discounted:</span>
+                          <span>{formatCurrency(bundle.discountedPrice)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-medium">
+                        <span>Featured:</span>
+                        <span className="text-green-600">
+                          {formatCurrency(bundle.finalPrice ?? bundle.bundlePrice ?? 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Bundle Price:</span>
+                        <span>{formatCurrency(bundle.bundlePrice ?? 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">You Save:</span>
+                        <span className="text-green-600 font-medium">
+                          {formatCurrency(savings)} ({percentage}%)
+                        </span>
+                      </div>
+                      {bundle.dealTag && <div className="text-xs font-semibold uppercase text-amber-600">{bundle.dealTag}</div>}
+                      <div className="space-y-2 pt-2 text-sm">
+                      {bundle.startDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>Starts: {formatDate(bundle.startDate)}</span>
+                        </div>
+                      )}
+                      {bundle.endDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>Ends: {formatDate(bundle.endDate)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Percent className="h-4 w-4 text-muted-foreground" />
+                        <span>Discount: {percentage}% off</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                  <div>
+                    <h4 className="mb-3 font-medium">Media</h4>
+                    <div className="space-y-3">
+                      <div className="relative aspect-[4/3] overflow-hidden rounded-md border bg-muted/40">
+                        <img
+                          src={
+                            bundle.heroImage
+                              ? getFullImageUrl(bundle.heroImage)
+                              : bundle.galleryImages && bundle.galleryImages.length > 0
+                                ? getFullImageUrl(bundle.galleryImages[0])
+                                : "/placeholder.svg"
+                          }
+                          alt={`${bundle.name} hero`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      {bundle.galleryImages && bundle.galleryImages.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {bundle.galleryImages.slice(0, 3).map((image) => (
+                            <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-md border bg-muted/20">
+                              <img
+                                src={getFullImageUrl(image)}
+                                alt={`${bundle.name} gallery`}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {bundle.guarantees && bundle.guarantees.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <h4 className="font-medium">Guarantees</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {bundle.guarantees.map((item, index) => (
+                        <div key={`${item.title}-${index}`} className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+                          <div className="font-semibold">{item.title}</div>
+                          {item.description && (
+                            <div className="text-xs text-muted-foreground">{item.description}</div>
+                          )}
+                          {item.icon && <div className="text-xs text-muted-foreground">{item.icon}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+
+        {bundles.length === 0 && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">No bundles created yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Create your first product bundle to offer special deals to customers
+              </p>
+              <Button onClick={() => openDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Bundle
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  )
+}
                             {bundle.sizeOptions.map((size) => (
                               <span
                                 key={size}
