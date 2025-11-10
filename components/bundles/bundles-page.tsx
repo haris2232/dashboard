@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -18,15 +18,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { bundleAPI, type Bundle } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Edit, Trash2, Package, Calendar, Percent, ImageIcon, Upload, Loader2, X, Star } from "lucide-react"
+import { Plus, Edit, Trash2, Package, Calendar, Percent, ImageIcon, Upload, Loader2, X } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 const bundleSchema = z.object({
-  // Main details
   name: z.string().min(1, "Bundle name is required"),
   productSlug: z.string().optional(),
   description: z.string().optional(),
@@ -38,10 +37,7 @@ const bundleSchema = z.object({
   discountedPrice: z.string().optional(),
   finalPrice: z.string().optional(),
   dealTag: z.string().optional(),
-  dealTag: z.string().optional(), // This seems to be for display
-  // This seems to be the primary price for the bundle, let's rename for clarity
-  // and make it optional if prices are defined per-variant.
-  defaultPrice: z.string().optional(),
+  bundlePrice: z.string().min(1, "Bundle price is required"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isActive: z.boolean(),
@@ -55,17 +51,6 @@ const getFullImageUrl = (url?: string | null) => {
   if (url.startsWith("http")) return url
   if (url.startsWith("/")) return `${UPLOAD_BASE_URL}${url}`
   return `${UPLOAD_BASE_URL}/${url}`
-}
-
-type BundleVariant = {
-  id: string
-  pack: string
-  color: string
-  size: string
-  sku: string
-  price: number
-  stock: number
-  isActive: boolean
 }
 
 const createId = () => Math.random().toString(36).slice(2, 11)
@@ -144,9 +129,6 @@ export function BundlesPage() {
   const [uploadingPackImageId, setUploadingPackImageId] = useState<string | null>(null)
   const [uploadingColorThumbnailId, setUploadingColorThumbnailId] = useState<string | null>(null)
   const [uploadingColorGalleryId, setUploadingColorGalleryId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("details")
-  const [variants, setVariants] = useState<BundleVariant[]>([])
-  const [defaultVariantId, setDefaultVariantId] = useState<string>("")
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof bundleSchema>>({
@@ -163,47 +145,12 @@ export function BundlesPage() {
       discountedPrice: "",
       finalPrice: "",
       dealTag: "",
-      dealTag: "", // Renamed from bundlePrice
-      defaultPrice: "",
+      bundlePrice: "",
       startDate: "",
       endDate: "",
       isActive: true,
     },
   })
-
-  // Effect to generate variants whenever options change
-  const generatedSkuPrefix = useMemo(() => {
-    const name = form.getValues("name") || "BUNDLE"
-    return name.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, "")
-  }, [form.watch("name")])
-
-  useEffect(() => {
-    const packs = packOptions.filter(p => p.name)
-    const colors = colorOptions.filter(c => c.name)
-    const sizes = sizeOptions.filter(s => s)
-
-    if (packs.length === 0 || colors.length === 0 || sizes.length === 0) {
-      setVariants([])
-      return
-    }
-
-    const newVariants: BundleVariant[] = []
-    packs.forEach(pack => {
-      colors.forEach(color => {
-        sizes.forEach(size => {
-          const existing = variants.find(v => v.pack === pack.name && v.color === color.name && v.size === size)
-          if (existing) {
-            newVariants.push(existing)
-          } else {
-            const id = `var-${pack.name}-${color.name}-${size}-${createId()}`
-            const sku = `${generatedSkuPrefix}-${pack.quantity}P-${color.name.substring(0, 3).toUpperCase()}-${size}`
-            newVariants.push({ id, pack: pack.name, color: color.name, size, sku, price: Number(form.getValues("defaultPrice")) || 0, stock: 0, isActive: true })
-          }
-        })
-      })
-    })
-    setVariants(newVariants)
-  }, [packOptions, colorOptions, sizeOptions, generatedSkuPrefix, form.watch("defaultPrice")])
 
   useEffect(() => {
     loadData()
@@ -569,8 +516,8 @@ export function BundlesPage() {
         basePrice: bundle.basePrice !== undefined ? String(bundle.basePrice) : "",
         discountedPrice: bundle.discountedPrice !== undefined ? String(bundle.discountedPrice) : "",
         finalPrice: bundle.finalPrice !== undefined ? String(bundle.finalPrice) : "",
-        dealTag: bundle.dealTag || "", // This is correct
-        defaultPrice: bundle.bundlePrice !== undefined ? String(bundle.bundlePrice) : "", // Mapped to defaultPrice
+        dealTag: bundle.dealTag || "",
+        bundlePrice: bundle.bundlePrice !== undefined ? String(bundle.bundlePrice) : "",
         startDate: bundle.startDate || "",
         endDate: bundle.endDate || "",
         isActive: bundle.isActive,
@@ -632,7 +579,6 @@ export function BundlesPage() {
     setNewSizeValue("")
     setNewLengthValue("")
     setDialogOpen(true)
-    setActiveTab("details") // Reset to the first tab
   }
 
   const closeDialog = () => {
@@ -649,7 +595,6 @@ export function BundlesPage() {
     setGuarantees([])
     setNewSizeValue("")
     setNewLengthValue("")
-    setActiveTab("details")
   }
 
   const onSubmit = async (values: z.infer<typeof bundleSchema>) => {
@@ -708,7 +653,7 @@ export function BundlesPage() {
       const basePrice = values.basePrice?.trim() ? Number(values.basePrice) : undefined
       const discountedPrice = values.discountedPrice?.trim() ? Number(values.discountedPrice) : undefined
       const finalPrice = values.finalPrice?.trim() ? Number(values.finalPrice) : undefined
-      const defaultPriceNumeric = values.defaultPrice ? Number.parseFloat(values.defaultPrice) : 0
+      const bundlePriceNumeric = Number.parseFloat(values.bundlePrice)
 
       const guaranteesPayload = guarantees
         .filter((item) => item.title || item.description || item.icon)
@@ -720,7 +665,7 @@ export function BundlesPage() {
 
       const bundleData: any = {
         ...values,
-        bundlePrice: defaultPriceNumeric, // This is the main/default price
+        bundlePrice: bundlePriceNumeric,
         products: [],
         heroImage: heroImageValue,
         galleryImages: sanitizedGallery,
@@ -734,8 +679,7 @@ export function BundlesPage() {
         reviewsCount,
         basePrice,
         discountedPrice,
-        discountedPrice, // This is the main/default price
-        finalPrice: finalPrice ?? defaultPriceNumeric,
+        finalPrice: finalPrice ?? bundlePriceNumeric,
         dealTag: values.dealTag?.trim() || undefined,
         originalPrice: basePrice ?? bundlePriceNumeric,
         createdAt: editingBundle?.createdAt || new Date().toISOString(),
@@ -812,7 +756,7 @@ export function BundlesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap justify-between items-center gap-4">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Product Bundles</h1>
           <p className="text-muted-foreground">Create and manage product bundles and special offers</p>
@@ -824,26 +768,17 @@ export function BundlesPage() {
               Create Bundle
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingBundle ? "Edit Bundle" : "Create New Bundle"}</DialogTitle>
               <DialogDescription>
-                {editingBundle ? "Update bundle information and variations." : "Create a new product bundle with all its options and variations."}
+                {editingBundle ? "Update bundle information" : "Create a new product bundle with special pricing"}
               </DialogDescription>
             </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details">Bundle Details</TabsTrigger>
-                <TabsTrigger value="options">Options & Media</TabsTrigger>
-                <TabsTrigger value="variants">Variants</TabsTrigger>
-              </TabsList>
-
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4">
-                <form id="bundle-form" onSubmit={form.handleSubmit(onSubmit)} className="mt-4">
-                  <TabsContent value="details" className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="name"
@@ -860,10 +795,10 @@ export function BundlesPage() {
 
                   <FormField
                     control={form.control}
-                    name="defaultPrice"
+                    name="bundlePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Default Price</FormLabel>
+                        <FormLabel>Bundle Price </FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
@@ -873,7 +808,6 @@ export function BundlesPage() {
                   />
                 </div>
 
-                    </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -904,7 +838,6 @@ export function BundlesPage() {
                   />
                 </div>
 
-                    </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -935,7 +868,6 @@ export function BundlesPage() {
                   />
                 </div>
 
-                    </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -964,7 +896,8 @@ export function BundlesPage() {
                       </FormItem>
                     )}
                   />
-                    </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -1008,9 +941,7 @@ export function BundlesPage() {
                     )}
                   />
                 </div>
-                  </TabsContent>
 
-                  <TabsContent value="options" className="space-y-6">
                 <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
                   <div className="space-y-2">
                     <FormLabel>Hero Image</FormLabel>
@@ -1141,7 +1072,6 @@ export function BundlesPage() {
                   )}
                 />
 
-                
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1607,369 +1537,7 @@ export function BundlesPage() {
                     )}
                   </div>
                 </div>
-                  </TabsContent>
 
-                  <TabsContent value="variants" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-medium">Bundle Variants</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Configure stock, SKU, and price for each generated variant.
-                        </p>
-                      </div>
-                      <Badge variant="outline">{variants.length} variants</Badge>
-                    </div>
-
-                    {variants.length > 0 ? (
-                      <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2">
-                        {variants.map((variant) => (
-                          <Card key={variant.id} className={defaultVariantId === variant.id ? "ring-2 ring-primary" : ""}>
-                            <CardContent className="p-4">
-                              <div className="grid grid-cols-12 gap-4 items-center">
-                                <div className="col-span-1">
-                                  <Button
-                                    type="button"
-                                    variant={defaultVariantId === variant.id ? "default" : "outline"}
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => setDefaultVariantId(variant.id)}
-                                    title="Set as default variant"
-                                  >
-                                    <Star className={`h-4 w-4 ${defaultVariantId === variant.id ? "fill-current" : ""}`} />
-                                  </Button>
-                                </div>
-
-                                <div className="col-span-3">
-                                  <div className="font-medium text-sm">{variant.pack} / {variant.color} / {variant.size}</div>
-                                </div>
-
-                                <div className="col-span-2">
-                                  <FormLabel className="text-xs">SKU</FormLabel>
-                                  <Input
-                                    placeholder="SKU"
-                                    value={variant.sku}
-                                    onChange={(e) => setVariants(vars => vars.map(v => v.id === variant.id ? { ...v, sku: e.target.value } : v))}
-                                    className="text-sm h-9"
-                                  />
-                                </div>
-
-                                <div className="col-span-2">
-                                  <FormLabel className="text-xs">Price</FormLabel>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={variant.price}
-                                    onChange={(e) => setVariants(vars => vars.map(v => v.id === variant.id ? { ...v, price: Number.parseFloat(e.target.value) || 0 } : v))}
-                                    className="text-sm h-9"
-                                  />
-                                </div>
-
-                                <div className="col-span-2">
-                                  <FormLabel className="text-xs">Stock</FormLabel>
-                                  <Input
-                                    type="number"
-                                    placeholder="Stock"
-                                    value={variant.stock}
-                                    onChange={(e) => setVariants(vars => vars.map(v => v.id === variant.id ? { ...v, stock: Number.parseInt(e.target.value) || 0 } : v))}
-                                    className="text-sm h-9"
-                                  />
-                                </div>
-
-                                <div className="col-span-2 text-center">
-                                  <FormLabel className="text-xs">Active</FormLabel>
-                                  <div className="flex justify-center pt-1">
-                                    <Switch
-                                      checked={variant.isActive}
-                                      onCheckedChange={(checked) => setVariants(vars => vars.map(v => v.id === variant.id ? { ...v, isActive: checked } : v))}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <Card>
-                        <CardContent className="text-center py-12">
-                          <div className="text-muted-foreground">
-                            <div className="text-lg mb-2">No variants to display</div>
-                            <p className="text-sm">
-                              Add pack options, color sets, and sizes in the "Options & Media" tab to generate variants.
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
-
-                  <div className="flex justify-end space-x-2 pt-6 border-t">
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
-                  </div>
-                </form>
-              </Form>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {bundles.map((bundle) => {
-          const { savings, percentage } = calculateSavings(
-            bundle.basePrice ?? bundle.originalPrice,
-            bundle.finalPrice ?? bundle.bundlePrice,
-          )
-
-          return (
-            <Card key={bundle._id}>
-              <CardHeader>
-                <div className="flex justify-between items-start gap-4">
-                  <div className="space-y-2 max-w-xl">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="flex items-center gap-2 text-xl">
-                      <Package className="h-5 w-5" />
-                      {bundle.name}
-                    </CardTitle>
-                      {bundle.badgeText && <Badge>{bundle.badgeText}</Badge>}
-                      {!bundle.isActive && <Badge variant="secondary">Inactive</Badge>}
-                    </div>
-                    {typeof bundle.ratingValue === "number" && (
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span className="font-medium">★ {bundle.ratingValue.toFixed(1)}</span>
-                        {typeof bundle.reviewsCount === "number" && (
-                          <span>{bundle.reviewsCount.toLocaleString()} reviews</span>
-                        )}
-                      </div>
-                    )}
-                    {bundle.shortDescription && (
-                      <p className="text-sm text-muted-foreground">{bundle.shortDescription}</p>
-                    )}
-                    {bundle.description && <CardDescription>{bundle.description}</CardDescription>}
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => openDialog(bundle)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => deleteBundle(bundle._id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 lg:grid-cols-4">
-                  <div>
-                    <h4 className="mb-3 font-medium">Pack Options ({bundle.packOptions?.length ?? 0})</h4>
-                    <div className="space-y-2">
-                      {bundle.packOptions && bundle.packOptions.length > 0 ? (
-                        bundle.packOptions.map((pack, index) => (
-                          <div key={`${pack.name}-${index}`} className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-                            <div className="flex items-center justify-between font-medium">
-                              <span>{pack.name}</span>
-                              <span>{pack.quantity} pcs</span>
-                          </div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatCurrency(pack.totalPrice ?? 0)} • {formatCurrency(pack.pricePerItem ?? 0)}/item
-                        </div>
-                            {pack.tag && <div className="mt-1 text-xs font-semibold uppercase text-emerald-600">{pack.tag}</div>}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No pack options configured.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                  <div>
-                      <h4 className="mb-3 font-medium">Colors ({bundle.colorOptions?.length ?? 0})</h4>
-                    <div className="space-y-2">
-                        {bundle.colorOptions && bundle.colorOptions.length > 0 ? (
-                        bundle.colorOptions.map((color, index) => (
-                          <div key={`${color.name}-${index}`} className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-                              <div className="font-medium">{color.name}</div>
-                              {color.badge && <div className="text-xs uppercase text-amber-600">{color.badge}</div>}
-                              {color.description && (
-                                <div className="text-xs text-muted-foreground">{color.description}</div>
-                              )}
-                      </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No color sets defined.</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {bundle.sizeOptions && bundle.sizeOptions.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold uppercase text-muted-foreground">Sizes</h5>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {bundle.sizeOptions.map((size) => (
-                              <span
-                                key={size}
-                                className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-medium"
-                              >
-                                {size}
-                                {bundle.sizePriceVariation && bundle.sizePriceVariation[size] ? (
-                                  <span className="text-emerald-600">
-                                    +{formatCurrency(bundle.sizePriceVariation[size])}
-                        </span>
-                                ) : null}
-                              </span>
-                            ))}
-                      </div>
-                        </div>
-                      )}
-                      {bundle.lengthOptions && bundle.lengthOptions.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold uppercase text-muted-foreground">Lengths</h5>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {bundle.lengthOptions.map((option) => (
-                              <span key={option} className="rounded-full border bg-muted px-3 py-1 text-xs font-medium">
-                                {option}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="mb-3 font-medium">Pricing Details</h4>
-                    <div className="space-y-2 text-sm">
-                      {typeof bundle.basePrice === "number" && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Base Price:</span>
-                          <span className="line-through">{formatCurrency(bundle.basePrice)}</span>
-                        </div>
-                      )}
-                      {typeof bundle.discountedPrice === "number" && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Discounted:</span>
-                          <span>{formatCurrency(bundle.discountedPrice)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-medium">
-                        <span>Featured:</span>
-                        <span className="text-green-600">
-                          {formatCurrency(bundle.finalPrice ?? bundle.bundlePrice ?? 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Bundle Price:</span>
-                        <span>{formatCurrency(bundle.bundlePrice ?? 0)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">You Save:</span>
-                        <span className="text-green-600 font-medium">
-                          {formatCurrency(savings)} ({percentage}%)
-                        </span>
-                      </div>
-                      {bundle.dealTag && <div className="text-xs font-semibold uppercase text-amber-600">{bundle.dealTag}</div>}
-                      <div className="space-y-2 pt-2 text-sm">
-                      {bundle.startDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>Starts: {formatDate(bundle.startDate)}</span>
-                        </div>
-                      )}
-                      {bundle.endDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>Ends: {formatDate(bundle.endDate)}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-muted-foreground" />
-                        <span>Discount: {percentage}% off</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                  <div>
-                    <h4 className="mb-3 font-medium">Media</h4>
-                    <div className="space-y-3">
-                      <div className="relative aspect-[4/3] overflow-hidden rounded-md border bg-muted/40">
-                        <img
-                          src={
-                            bundle.heroImage
-                              ? getFullImageUrl(bundle.heroImage)
-                              : bundle.galleryImages && bundle.galleryImages.length > 0
-                                ? getFullImageUrl(bundle.galleryImages[0])
-                                : "/placeholder.svg"
-                          }
-                          alt={`${bundle.name} hero`}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      {bundle.galleryImages && bundle.galleryImages.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {bundle.galleryImages.slice(0, 3).map((image) => (
-                            <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-md border bg-muted/20">
-                              <img
-                                src={getFullImageUrl(image)}
-                                alt={`${bundle.name} gallery`}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {bundle.guarantees && bundle.guarantees.length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <h4 className="font-medium">Guarantees</h4>
-                    <div className="flex flex-wrap gap-3">
-                      {bundle.guarantees.map((item, index) => (
-                        <div key={`${item.title}-${index}`} className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-                          <div className="font-semibold">{item.title}</div>
-                          {item.description && (
-                            <div className="text-xs text-muted-foreground">{item.description}</div>
-                          )}
-                          {item.icon && <div className="text-xs text-muted-foreground">{item.icon}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-
-        {bundles.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No bundles created yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first product bundle to offer special deals to customers
-              </p>
-              <Button onClick={() => openDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Bundle
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      <div className="flex justify-end space-x-2 pt-6 border-t">
-        <Button type="button" variant="outline" onClick={closeDialog}>
-          Cancel
-        </Button>
-        <Button form="bundle-form" type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
-      </div>
-    </div>
-  )
-}
                 <FormField
                   control={form.control}
                   name="isActive"
@@ -1999,7 +1567,6 @@ export function BundlesPage() {
       </div>
 
       <div className="grid gap-6">
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {bundles.map((bundle) => {
           const { savings, percentage } = calculateSavings(
             bundle.basePrice ?? bundle.originalPrice,
