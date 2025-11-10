@@ -18,7 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { bundleAPI, type Bundle } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
@@ -43,16 +42,6 @@ const bundleSchema = z.object({
   endDate: z.string().optional(),
   isActive: z.boolean(),
 })
-
-interface BundleVariant {
-  id: string;
-  pack: string;
-  color: string;
-  size: string;
-  sku: string;
-  price: number;
-  isActive: boolean;
-}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://athlekt.com/backendnew/api"
 const UPLOAD_BASE_URL = API_BASE_URL.replace(/\/api$/, "")
@@ -90,6 +79,16 @@ type GuaranteeForm = {
   title?: string
   description?: string
   icon?: string
+}
+
+type VariationOption = {
+  id: string
+  pack: string
+  color: string
+  size: string
+  sku: string
+  price: number
+  stock: number
 }
 
 const createDefaultPackOption = (): PackOptionForm => ({
@@ -140,8 +139,8 @@ export function BundlesPage() {
   const [uploadingPackImageId, setUploadingPackImageId] = useState<string | null>(null)
   const [uploadingColorThumbnailId, setUploadingColorThumbnailId] = useState<string | null>(null)
   const [uploadingColorGalleryId, setUploadingColorGalleryId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("details")
-  const [variants, setVariants] = useState<BundleVariant[]>([])
+  const [activeTab, setActiveTab] = useState<'details' | 'variations'>('details')
+  const [variations, setVariations] = useState<VariationOption[]>([])
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof bundleSchema>>({
@@ -168,39 +167,6 @@ export function BundlesPage() {
   useEffect(() => {
     loadData()
   }, [])
-
-  useEffect(() => {
-    // Generate variants when options change
-    if (packOptions.length > 0 && colorOptions.length > 0 && sizeOptions.length > 0) {
-      const newVariants: BundleVariant[] = []
-      packOptions.forEach(pack => {
-        colorOptions.forEach(color => {
-          sizeOptions.forEach(size => {
-            const id = `variant-${pack.name}-${color.name}-${size}`.replace(/\s+/g, '-').toLowerCase();
-            const existingVariant = variants.find(v => v.id === id);
-            
-            if (existingVariant) {
-              newVariants.push(existingVariant);
-            } else {
-              const baseSku = form.getValues('productSlug') || 'BUNDLE';
-              newVariants.push({
-                id,
-                pack: pack.name,
-                color: color.name,
-                size: size,
-                sku: `${baseSku}-${pack.quantity}P-${color.name.substring(0,3).toUpperCase()}-${size}`,
-                price: Number(form.getValues('bundlePrice')) || 0,
-                isActive: true,
-              });
-            }
-          });
-        });
-      });
-      setVariants(newVariants);
-    } else {
-      setVariants([]);
-    }
-  }, [packOptions, colorOptions, sizeOptions, form]);
 
   const loadData = async () => {
     try {
@@ -604,10 +570,6 @@ export function BundlesPage() {
       setLengthOptions([...(bundle.lengthOptions || [])])
       setGuarantees(
         (bundle.guarantees || []).map((item) => ({
-          // The backend doesn't send an ID for guarantees, so we create one.
-          // This is safe because we reconstruct this array on every save.
-          // The `any` cast is to handle the potential lack of `_id` from the backend.
-          // @ts-ignore
           id: createId(),
           title: item.title || "",
           description: item.description || "",
@@ -626,8 +588,6 @@ export function BundlesPage() {
       setLengthOptions([])
       setGuarantees([])
     }
-    setVariants((bundle?.variants as BundleVariant[]) || [])
-    setActiveTab("details")
     setNewSizeValue("")
     setNewLengthValue("")
     setDialogOpen(true)
@@ -647,11 +607,31 @@ export function BundlesPage() {
     setGuarantees([])
     setNewSizeValue("")
     setNewLengthValue("")
-    setVariants([])
   }
 
-  const updateVariant = (id: string, field: keyof BundleVariant, value: string | number | boolean) => {
-    setVariants(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
+  const generateVariations = () => {
+    const newVariations: VariationOption[] = []
+    
+    packOptions.forEach(pack => {
+      colorOptions.forEach(color => {
+        sizeOptions.forEach(size => {
+          const basePrice = Number(form.getValues('bundlePrice')) || 0
+          const sizeAdjustment = sizePriceVariation[size] || 0
+          
+          newVariations.push({
+            id: createId(),
+            pack: pack.name,
+            color: color.name,
+            size: size,
+            sku: `${pack.name.substring(0,3)}-${color.name.substring(0,3)}-${size}`.toUpperCase(),
+            price: basePrice + sizeAdjustment,
+            stock: 0
+          })
+        })
+      })
+    })
+    
+    setVariations(newVariations)
   }
 
   const onSubmit = async (values: z.infer<typeof bundleSchema>) => {
@@ -731,7 +711,6 @@ export function BundlesPage() {
         sizeOptions,
         sizePriceVariation: sizePricePayload,
         lengthOptions,
-        variants,
         guarantees: guaranteesPayload,
         ratingValue,
         reviewsCount,
@@ -834,663 +813,739 @@ export function BundlesPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details">Details & Media</TabsTrigger>
-                <TabsTrigger value="options">Options</TabsTrigger>
-                <TabsTrigger value="variants">Variants</TabsTrigger>
-              </TabsList>
+            <div className="flex border-b mb-6">
+              <button
+                className={`px-4 py-2 ${
+                  activeTab === 'details' 
+                    ? 'border-b-2 border-primary font-medium' 
+                    : 'text-muted-foreground'
+                }`}
+                onClick={() => setActiveTab('details')}
+              >
+                Bundle Details
+              </button>
+              <button
+                className={`px-4 py-2 ${
+                  activeTab === 'variations'
+                    ? 'border-b-2 border-primary font-medium'
+                    : 'text-muted-foreground'
+                }`}
+                onClick={() => {
+                  generateVariations()
+                  setActiveTab('variations')
+                }}
+              >
+                Variations
+              </button>
+            </div>
+
+            {activeTab === 'details' ? (
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4">
-                  <TabsContent value="details" className="space-y-6 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bundle Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter bundle name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="bundlePrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bundle Price </FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                    control={form.control}
-                    name="shortDescription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Short Description</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Short summary shown on bundle card" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="badgeText"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Badge Text</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Black Friday Deal" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                    control={form.control}
-                    name="productSlug"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product Slug</FormLabel>
-                        <FormControl>
-                          <Input placeholder="classic-crew-neck" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="dealTag"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Deal Tag</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Black Friday Deal" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                    control={form.control}
-                    name="ratingValue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Rating</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.1" min="0" max="5" placeholder="4.8" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="reviewsCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reviews Count</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" placeholder="65069" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <FormField
-                    control={form.control}
-                    name="basePrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Base Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="65200" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="discountedPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Discounted Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="36300" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="finalPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Featured Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="28677" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                    <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
-                      <div className="space-y-2">
-                    <FormLabel>Hero Image</FormLabel>
-                    <div className="border border-dashed border-muted-foreground/40 rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/20">
-                      {heroImage ? (
-                        <div className="w-full relative">
-                          <img
-                            src={getFullImageUrl(heroImage)}
-                            alt="Bundle hero"
-                            className="w-full h-48 object-cover rounded-md"
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-                            onClick={() => setHeroImage("")}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="text-center text-muted-foreground flex flex-col items-center gap-2 py-8">
-                          <ImageIcon className="h-10 w-10" />
-                          <p className="text-sm">No hero image selected</p>
-                        </div>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bundle Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter bundle name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                      <input
-                        ref={heroInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0]
-                          if (file) {
-                            handleHeroImageUpload(file)
-                          }
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => heroInputRef.current?.click()}
-                        disabled={uploadingHero}
-                      >
-                        {uploadingHero ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Hero Image
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="bundlePrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bundle Price </FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                      <div className="space-y-2">
-                        <FormLabel>Gallery Images</FormLabel>
-                    <div className="border border-dashed border-muted-foreground/40 rounded-lg p-4 bg-muted/20">
-                      <div className="flex flex-wrap gap-4">
-                        {galleryImages.map((imageUrl) => (
-                          <div key={imageUrl} className="relative w-32 h-32 rounded-md overflow-hidden border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="shortDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Short Description</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Short summary shown on bundle card" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="badgeText"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Badge Text</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Black Friday Deal" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="productSlug"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Slug</FormLabel>
+                          <FormControl>
+                            <Input placeholder="classic-crew-neck" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="dealTag"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Deal Tag</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Black Friday Deal" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="ratingValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rating</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.1" min="0" max="5" placeholder="4.8" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="reviewsCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Reviews Count</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="0" placeholder="65069" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="basePrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Base Price</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="65200" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="discountedPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Discounted Price</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="36300" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="finalPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Featured Price</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="28677" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+                    <div className="space-y-2">
+                      <FormLabel>Hero Image</FormLabel>
+                      <div className="border border-dashed border-muted-foreground/40 rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/20">
+                        {heroImage ? (
+                          <div className="w-full relative">
                             <img
-                              src={getFullImageUrl(imageUrl)}
-                              alt="Gallery"
-                              className="w-full h-full object-cover"
+                              src={getFullImageUrl(heroImage)}
+                              alt="Bundle hero"
+                              className="w-full h-48 object-cover rounded-md"
                             />
                             <Button
                               type="button"
                               size="icon"
                               variant="ghost"
-                              className="absolute top-1 right-1 bg-white/80 hover:bg-white"
-                              onClick={() => removeGalleryImage(imageUrl)}
+                              className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                              onClick={() => setHeroImage("")}
                             >
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
-                        <div className="w-32 h-32 border border-dashed border-muted-foreground/40 rounded-md flex flex-col items-center justify-center text-center text-muted-foreground bg-background/40">
-                          <input
-                            ref={galleryInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={(event) => {
-                              const files = event.target.files
-                              if (files) {
-                                handleGalleryImagesUpload(files)
-                              }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="flex flex-col items-center gap-2"
-                            onClick={() => galleryInputRef.current?.click()}
-                            disabled={uploadingGallery}
-                          >
-                            {uploadingGallery ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                              <Upload className="h-5 w-5" />
-                            )}
-                            <span className="text-xs">Add Images</span>
-                          </Button>
-                        </div>
+                        ) : (
+                          <div className="text-center text-muted-foreground flex flex-col items-center gap-2 py-8">
+                            <ImageIcon className="h-10 w-10" />
+                            <p className="text-sm">No hero image selected</p>
+                          </div>
+                        )}
+                        <input
+                          ref={heroInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            if (file) {
+                              handleHeroImageUpload(file)
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => heroInputRef.current?.click()}
+                          disabled={uploadingHero}
+                        >
+                          {uploadingHero ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload Hero Image
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                    <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Enter bundle description" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Start Date (Optional)</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                      <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>End Date (Optional)</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                  </TabsContent>
-
-                  <TabsContent value="options" className="space-y-6 pt-4">
-                    <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <FormLabel className="text-base font-medium">Pack Options</FormLabel>
-                    <Button type="button" variant="secondary" onClick={addPackOption}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Pack
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Define the quantity packs available for this bundle. Per-item pricing updates automatically.
-                  </p>
-                  <div className="space-y-4">
-                    {packOptions.map((pack) => (
-                      <div key={pack.id} className="rounded-lg border p-4 space-y-4">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                          <div className="grid flex-1 gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <FormLabel className="text-sm font-medium">Pack Name</FormLabel>
-                              <Input
-                                value={pack.name}
-                                onChange={(event) => updatePackOptionField(pack.id, "name", event.target.value)}
-                                placeholder="6-Pack"
+                    <div className="space-y-2">
+                      <FormLabel>Gallery Images</FormLabel>
+                      <div className="border border-dashed border-muted-foreground/40 rounded-lg p-4 bg-muted/20">
+                        <div className="flex flex-wrap gap-4">
+                          {galleryImages.map((imageUrl) => (
+                            <div key={imageUrl} className="relative w-32 h-32 rounded-md overflow-hidden border">
+                              <img
+                                src={getFullImageUrl(imageUrl)}
+                                alt="Gallery"
+                                className="w-full h-full object-cover"
                               />
-                            </div>
-                            <div className="space-y-2">
-                              <FormLabel className="text-sm font-medium">Tag (optional)</FormLabel>
-                              <Input
-                                value={pack.tag ?? ""}
-                                onChange={(event) => updatePackOptionField(pack.id, "tag", event.target.value)}
-                                placeholder="Top Seller"
-                              />
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removePackOption(pack.id)}
-                            disabled={packOptions.length === 1}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div className="space-y-2">
-                            <FormLabel className="text-sm font-medium">Quantity</FormLabel>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={pack.quantity}
-                              onChange={(event) => updatePackOptionQuantity(pack.id, Number(event.target.value))}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <FormLabel className="text-sm font-medium">Total Price</FormLabel>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={pack.totalPrice}
-                              onChange={(event) => updatePackOptionTotalPrice(pack.id, Number(event.target.value))}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <FormLabel className="text-sm font-medium">Per Item</FormLabel>
-                            <p className="rounded-md border bg-muted px-3 py-2 text-sm font-medium">
-                              {pack.pricePerItem.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <FormLabel className="text-sm font-medium">Thumbnail</FormLabel>
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <div className="h-20 w-20 overflow-hidden rounded-md border bg-muted">
-                              {pack.thumbnailImage ? (
-                                <img src={getFullImageUrl(pack.thumbnailImage)} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                                  No image
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
                               <Button
                                 type="button"
-                                variant="outline"
-                                onClick={() => triggerFileInput(`pack-thumb-${pack.id}`)}
-                                disabled={uploadingPackImageId === pack.id}
+                                size="icon"
+                                variant="ghost"
+                                className="absolute top-1 right-1 bg-white/80 hover:bg-white"
+                                onClick={() => removeGalleryImage(imageUrl)}
                               >
-                                {uploadingPackImageId === pack.id ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Uploading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    Upload Image
-                                  </>
-                                )}
+                                <X className="h-4 w-4" />
                               </Button>
-                              {pack.thumbnailImage && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => updatePackOptionField(pack.id, "thumbnailImage", "")}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <input
-                                id={`pack-thumb-${pack.id}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(event) => {
-                                  const file = event.target.files?.[0]
-                                  if (file) {
-                                    handlePackThumbnailUpload(pack.id, file)
-                                  }
-                                  event.target.value = ""
-                                }}
-                              />
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                    <FormLabel className="text-base font-medium">Color Sets</FormLabel>
-                    <Button type="button" variant="secondary" onClick={addColorOption}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Color
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Add color groupings with dedicated imagery and badges.
-                  </p>
-                  <div className="space-y-4">
-                    {colorOptions.map((color) => (
-                      <div key={color.id} className="space-y-4 rounded-lg border p-4">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                          <div className="grid flex-1 gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <FormLabel className="text-sm font-medium">Color Name</FormLabel>
-                              <Input
-                                value={color.name}
-                                onChange={(event) => updateColorOptionField(color.id, "name", event.target.value)}
-                                placeholder="Black"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <FormLabel className="text-sm font-medium">Badge (optional)</FormLabel>
-                              <Input
-                                value={color.badge ?? ""}
-                                onChange={(event) => updateColorOptionField(color.id, "badge", event.target.value)}
-                                placeholder="Top Seller"
-                              />
-                            </div>
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeColorOption(color.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="space-y-2">
-                          <FormLabel className="text-sm font-medium">Description</FormLabel>
-                          <Textarea
-                            value={color.description ?? ""}
-                            onChange={(event) => updateColorOptionField(color.id, "description", event.target.value)}
-                            placeholder="List colors covered in this pack."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <FormLabel className="text-sm font-medium">Thumbnail</FormLabel>
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <div className="h-20 w-20 overflow-hidden rounded-md border bg-muted">
-                              {color.thumbnailImage ? (
-                                <img src={getFullImageUrl(color.thumbnailImage)} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                                  No image
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => triggerFileInput(`color-thumb-${color.id}`)}
-                                disabled={uploadingColorThumbnailId === color.id}
-                              >
-                                {uploadingColorThumbnailId === color.id ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Uploading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    Upload Thumbnail
-                                  </>
-                                )}
-                              </Button>
-                              {color.thumbnailImage && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    setColorOptions((prev) =>
-                                      prev.map((item) =>
-                                        item.id === color.id ? { ...item, thumbnailImage: "" } : item,
-                                      ),
-                                    )
-                                  }
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <input
-                                id={`color-thumb-${color.id}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(event) => {
-                                  const file = event.target.files?.[0]
-                                  if (file) {
-                                    handleColorThumbnailUpload(color.id, file)
-                                  }
-                                  event.target.value = ""
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <FormLabel className="text-sm font-medium">Gallery Images</FormLabel>
-                          <div className="flex flex-wrap gap-3">
-                            {color.galleryImages.map((imageUrl) => (
-                              <div key={imageUrl} className="relative h-20 w-20 overflow-hidden rounded-md border bg-muted">
-                                <img src={getFullImageUrl(imageUrl)} alt="" className="h-full w-full object-cover" />
-                                <button
-                                  type="button"
-                                  className="absolute right-1 top-1 rounded-full bg-white/80 p-1 text-xs hover:bg-white"
-                                  onClick={() => removeColorGalleryImage(color.id, imageUrl)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </div>
-                            ))}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => triggerFileInput(`color-gallery-${color.id}`)}
-                              disabled={uploadingColorGalleryId === color.id}
-                            >
-                              {uploadingColorGalleryId === color.id ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Uploading...
-                                </>
-                              ) : (
-                                <>
-                                  <Upload className="mr-2 h-4 w-4" />
-                                  Upload Images
-                                </>
-                              )}
-                            </Button>
+                          ))}
+                          <div className="w-32 h-32 border border-dashed border-muted-foreground/40 rounded-md flex flex-col items-center justify-center text-center text-muted-foreground bg-background/40">
                             <input
-                              id={`color-gallery-${color.id}`}
+                              ref={galleryInputRef}
                               type="file"
                               accept="image/*"
                               multiple
                               className="hidden"
                               onChange={(event) => {
-                                if (event.target.files) {
-                                  handleColorGalleryUpload(color.id, event.target.files)
+                                const files = event.target.files
+                                if (files) {
+                                  handleGalleryImagesUpload(files)
                                 }
-                                event.target.value = ""
                               }}
                             />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="flex flex-col items-center gap-2"
+                              onClick={() => galleryInputRef.current?.click()}
+                              disabled={uploadingGallery}
+                            >
+                              {uploadingGallery ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                              ) : (
+                                <Upload className="h-5 w-5" />
+                              )}
+                              <span className="text-xs">Add Images</span>
+                            </Button>
                           </div>
                         </div>
                       </div>
-                    ))}
-                    {colorOptions.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        No colors added yet. Use “Add Color” to create a color set.
-                      </p>
-                    )}
-                  </div>
+                    </div>
                   </div>
 
-                    <div className="space-y-4">
-                      <FormLabel className="text-base font-medium">Sizes</FormLabel>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      value={newSizeValue}
-                      onChange={(event) => setNewSizeValue(event.target.value.toUpperCase())}
-                      placeholder="Add size (e.g. S)"
-                      className="sm:w-64"
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Enter bundle description" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start Date (Optional)</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Button type="button" variant="secondary" onClick={addSizeOption}>
-                      Add Size
-                    </Button>
+
+                    <FormField
+                      control={form.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Date (Optional)</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  {sizeOptions.length > 0 && (
-                    <>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Pack Options</FormLabel>
+                      <Button type="button" variant="secondary" onClick={addPackOption}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Pack
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Define the quantity packs available for this bundle. Per-item pricing updates automatically.
+                    </p>
+                    <div className="space-y-4">
+                      {packOptions.map((pack) => (
+                        <div key={pack.id} className="rounded-lg border p-4 space-y-4">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="grid flex-1 gap-4 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <FormLabel className="text-sm font-medium">Pack Name</FormLabel>
+                                <Input
+                                  value={pack.name}
+                                  onChange={(event) => updatePackOptionField(pack.id, "name", event.target.value)}
+                                  placeholder="6-Pack"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <FormLabel className="text-sm font-medium">Tag (optional)</FormLabel>
+                                <Input
+                                  value={pack.tag ?? ""}
+                                  onChange={(event) => updatePackOptionField(pack.id, "tag", event.target.value)}
+                                  placeholder="Top Seller"
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removePackOption(pack.id)}
+                              disabled={packOptions.length === 1}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <FormLabel className="text-sm font-medium">Quantity</FormLabel>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={pack.quantity}
+                                onChange={(event) => updatePackOptionQuantity(pack.id, Number(event.target.value))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <FormLabel className="text-sm font-medium">Total Price</FormLabel>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pack.totalPrice}
+                                onChange={(event) => updatePackOptionTotalPrice(pack.id, Number(event.target.value))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <FormLabel className="text-sm font-medium">Per Item</FormLabel>
+                              <p className="rounded-md border bg-muted px-3 py-2 text-sm font-medium">
+                                {pack.pricePerItem.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm font-medium">Thumbnail</FormLabel>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                              <div className="h-20 w-20 overflow-hidden rounded-md border bg-muted">
+                                {pack.thumbnailImage ? (
+                                  <img src={getFullImageUrl(pack.thumbnailImage)} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                                    No image
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => triggerFileInput(`pack-thumb-${pack.id}`)}
+                                  disabled={uploadingPackImageId === pack.id}
+                                >
+                                  {uploadingPackImageId === pack.id ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Uploading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="mr-2 h-4 w-4" />
+                                      Upload Image
+                                    </>
+                                  )}
+                                </Button>
+                                {pack.thumbnailImage && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => updatePackOptionField(pack.id, "thumbnailImage", "")}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <input
+                                  id={`pack-thumb-${pack.id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0]
+                                    if (file) {
+                                      handlePackThumbnailUpload(pack.id, file)
+                                    }
+                                    event.target.value = ""
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Color Sets</FormLabel>
+                      <Button type="button" variant="secondary" onClick={addColorOption}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Color
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Add color groupings with dedicated imagery and badges.
+                    </p>
+                    <div className="space-y-4">
+                      {colorOptions.map((color) => (
+                        <div key={color.id} className="space-y-4 rounded-lg border p-4">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="grid flex-1 gap-4 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <FormLabel className="text-sm font-medium">Color Name</FormLabel>
+                                <Input
+                                  value={color.name}
+                                  onChange={(event) => updateColorOptionField(color.id, "name", event.target.value)}
+                                  placeholder="Black"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <FormLabel className="text-sm font-medium">Badge (optional)</FormLabel>
+                                <Input
+                                  value={color.badge ?? ""}
+                                  onChange={(event) => updateColorOptionField(color.id, "badge", event.target.value)}
+                                  placeholder="Top Seller"
+                                />
+                              </div>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeColorOption(color.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm font-medium">Description</FormLabel>
+                            <Textarea
+                              value={color.description ?? ""}
+                              onChange={(event) => updateColorOptionField(color.id, "description", event.target.value)}
+                              placeholder="List colors covered in this pack."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm font-medium">Thumbnail</FormLabel>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                              <div className="h-20 w-20 overflow-hidden rounded-md border bg-muted">
+                                {color.thumbnailImage ? (
+                                  <img src={getFullImageUrl(color.thumbnailImage)} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                                    No image
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => triggerFileInput(`color-thumb-${color.id}`)}
+                                  disabled={uploadingColorThumbnailId === color.id}
+                                >
+                                  {uploadingColorThumbnailId === color.id ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Uploading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="mr-2 h-4 w-4" />
+                                      Upload Thumbnail
+                                    </>
+                                  )}
+                                </Button>
+                                {color.thumbnailImage && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      setColorOptions((prev) =>
+                                        prev.map((item) =>
+                                          item.id === color.id ? { ...item, thumbnailImage: "" } : item,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <input
+                                  id={`color-thumb-${color.id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0]
+                                    if (file) {
+                                      handleColorThumbnailUpload(color.id, file)
+                                    }
+                                    event.target.value = ""
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm font-medium">Gallery Images</FormLabel>
+                            <div className="flex flex-wrap gap-3">
+                              {color.galleryImages.map((imageUrl) => (
+                                <div key={imageUrl} className="relative h-20 w-20 overflow-hidden rounded-md border bg-muted">
+                                  <img src={getFullImageUrl(imageUrl)} alt="" className="h-full w-full object-cover" />
+                                  <button
+                                    type="button"
+                                    className="absolute right-1 top-1 rounded-full bg-white/80 p-1 text-xs hover:bg-white"
+                                    onClick={() => removeColorGalleryImage(color.id, imageUrl)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => triggerFileInput(`color-gallery-${color.id}`)}
+                                disabled={uploadingColorGalleryId === color.id}
+                              >
+                                {uploadingColorGalleryId === color.id ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Images
+                                  </>
+                                )}
+                              </Button>
+                              <input
+                                id={`color-gallery-${color.id}`}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(event) => {
+                                  if (event.target.files) {
+                                    handleColorGalleryUpload(color.id, event.target.files)
+                                  }
+                                  event.target.value = ""
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {colorOptions.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          No colors added yet. Use “Add Color” to create a color set.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Sizes</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={newSizeValue}
+                          onChange={(event) => setNewSizeValue(event.target.value.toUpperCase())}
+                          placeholder="Add size (e.g. S)"
+                          className="sm:w-64"
+                        />
+                        <Button type="button" variant="secondary" onClick={addSizeOption}>
+                          Add Size
+                        </Button>
+                      </div>
+                    </div>
+                    {sizeOptions.length > 0 && (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {sizeOptions.map((size) => (
+                            <span
+                              key={size}
+                              className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-sm font-medium"
+                            >
+                              {size}
+                              <button
+                                type="button"
+                                onClick={() => removeSizeOption(size)}
+                                className="rounded-full bg-white/70 p-1 hover:bg-white"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">Size Price Adjustments</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Optional price offsets for larger sizes (e.g. XL +150).
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {sizeOptions.map((size) => (
+                              <div key={size} className="space-y-2">
+                                <FormLabel className="text-xs uppercase">{size}</FormLabel>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={sizePriceVariation[size] ?? 0}
+                                  onChange={(event) => updateSizePriceVariation(size, Number(event.target.value))}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Length Options</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={newLengthValue}
+                          onChange={(event) => setNewLengthValue(event.target.value)}
+                          placeholder="Add length (e.g. Regular)"
+                          className="sm:w-64"
+                        />
+                        <Button type="button" variant="secondary" onClick={addLengthOption}>
+                          Add Length
+                        </Button>
+                      </div>
+                    </div>
+                    {lengthOptions.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {sizeOptions.map((size) => (
+                        {lengthOptions.map((item) => (
                           <span
-                            key={size}
+                            key={item}
                             className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-sm font-medium"
                           >
-                            {size}
+                            {item}
                             <button
                               type="button"
-                              onClick={() => removeSizeOption(size)}
+                              onClick={() => removeLengthOption(item)}
                               className="rounded-full bg-white/70 p-1 hover:bg-white"
                             >
                               <X className="h-3 w-3" />
@@ -1498,188 +1553,187 @@ export function BundlesPage() {
                           </span>
                         ))}
                       </div>
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Size Price Adjustments</h4>
-                        <p className="text-xs text-muted-foreground">
-                          Optional price offsets for larger sizes (e.g. XL +150).
-                        </p>
-                        <div className="grid gap-3 md:grid-cols-3">
-                          {sizeOptions.map((size) => (
-                            <div key={size} className="space-y-2">
-                              <FormLabel className="text-xs uppercase">{size}</FormLabel>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Guarantee Highlights</FormLabel>
+                      <Button type="button" variant="secondary" onClick={addGuarantee}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Highlight
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      {guarantees.map((item) => (
+                        <div key={item.id} className="space-y-3 rounded-lg border p-4">
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <FormLabel className="text-sm font-medium">Title</FormLabel>
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={sizePriceVariation[size] ?? 0}
-                                onChange={(event) => updateSizePriceVariation(size, Number(event.target.value))}
+                                value={item.title ?? ""}
+                                onChange={(event) => updateGuaranteeField(item.id, "title", event.target.value)}
+                                placeholder="100-Day Guarantee"
                               />
                             </div>
-                          ))}
+                            <div className="space-y-2 md:col-span-2">
+                              <FormLabel className="text-sm font-medium">Description</FormLabel>
+                              <Input
+                                value={item.description ?? ""}
+                                onChange={(event) => updateGuaranteeField(item.id, "description", event.target.value)}
+                                placeholder="Free returns & exchanges"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-2">
+                              <FormLabel className="text-sm font-medium">Icon (optional)</FormLabel>
+                              <Input
+                                value={item.icon ?? ""}
+                                onChange={(event) => updateGuaranteeField(item.id, "icon", event.target.value)}
+                                placeholder="shield-check"
+                              />
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeGuarantee(item.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                    </>
-                  )}
-                  </div>
-                  
-                    <div className="space-y-4">
-                      <FormLabel className="text-base font-medium">Length Options</FormLabel>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      value={newLengthValue}
-                      onChange={(event) => setNewLengthValue(event.target.value)}
-                      placeholder="Add length (e.g. Regular)"
-                      className="sm:w-64"
-                    />
-                    <Button type="button" variant="secondary" onClick={addLengthOption}>
-                      Add Length
-                    </Button>
-                      </div>
-                  {lengthOptions.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {lengthOptions.map((item) => (
-                        <span
-                          key={item}
-                          className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-sm font-medium"
-                        >
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() => removeLengthOption(item)}
-                            className="rounded-full bg-white/70 p-1 hover:bg-white"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
                       ))}
-                        </div>
+                      {guarantees.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No highlights added. Use “Add Highlight” to showcase guarantees.</p>
                       )}
                     </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                    <FormLabel className="text-base font-medium">Guarantee Highlights</FormLabel>
-                    <Button type="button" variant="secondary" onClick={addGuarantee}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Highlight
-                    </Button>
                   </div>
-                  <div className="space-y-4">
-                    {guarantees.map((item) => (
-                      <div key={item.id} className="space-y-3 rounded-lg border p-4">
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div className="space-y-2">
-                            <FormLabel className="text-sm font-medium">Title</FormLabel>
-                            <Input
-                              value={item.title ?? ""}
-                              onChange={(event) => updateGuaranteeField(item.id, "title", event.target.value)}
-                              placeholder="100-Day Guarantee"
-                            />
-                          </div>
-                          <div className="space-y-2 md:col-span-2">
-                            <FormLabel className="text-sm font-medium">Description</FormLabel>
-                            <Input
-                              value={item.description ?? ""}
-                              onChange={(event) => updateGuaranteeField(item.id, "description", event.target.value)}
-                              placeholder="Free returns & exchanges"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-2">
-                            <FormLabel className="text-sm font-medium">Icon (optional)</FormLabel>
-                            <Input
-                              value={item.icon ?? ""}
-                              onChange={(event) => updateGuaranteeField(item.id, "icon", event.target.value)}
-                              placeholder="shield-check"
-                            />
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeGuarantee(item.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {guarantees.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No highlights added. Use “Add Highlight” to showcase guarantees.</p>
-                    )}
-                  </div>
-                </div>
-                  </TabsContent>
-                  <TabsContent value="variants" className="space-y-4 pt-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-medium">Bundle Variants</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Auto-generated variants from your options. Set SKU and price for each.
-                        </p>
-                      </div>
-                      <Badge variant="outline">{variants.length} variants</Badge>
-                    </div>
-                    {variants.length > 0 ? (
-                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 border rounded-md p-2">
-                        {variants.map((variant) => (
-                          <Card key={variant.id}>
-                            <CardContent className="p-3">
-                              <div className="grid grid-cols-12 gap-3 items-center">
-                                <div className="col-span-5">
-                                  <p className="text-sm font-medium truncate">
-                                    {variant.pack} / {variant.color} / {variant.size}
-                                  </p>
-                                </div>
-                                <div className="col-span-4">
-                                  <Input
-                                    placeholder="Variant SKU"
-                                    value={variant.sku}
-                                    onChange={(e) => updateVariant(variant.id, 'sku', e.target.value)}
-                                    className="text-sm h-9"
-                                  />
-                                </div>
-                                <div className="col-span-3">
-                                  <Input
-                                    type="number"
-                                    placeholder="Price"
-                                    value={variant.price}
-                                    onChange={(e) => updateVariant(variant.id, 'price', Number(e.target.value))}
-                                    className="text-sm h-9"
-                                  />
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <p>No variants generated. Add packs, colors, and sizes to create variants.</p>
-                      </div>
-                    )}
-                  </TabsContent>
 
                   <FormField
-                  control={form.control}
-                  name="isActive"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Active Bundle</FormLabel>
-                        <div className="text-sm text-muted-foreground">Bundle will be available for purchase</div>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                    control={form.control}
+                    name="isActive"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Active Bundle</FormLabel>
+                          <div className="text-sm text-muted-foreground">Bundle will be available for purchase</div>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
 
-                  <div className="flex justify-end space-x-2 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={closeDialog}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
-                </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={closeDialog}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
+                  </div>
                 </form>
               </Form>
-            </Tabs>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Product Variations</h3>
+                  <Button 
+                    type="button"
+                    variant="secondary"
+                    onClick={generateVariations}
+                  >
+                    Regenerate Variations
+                  </Button>
+                </div>
+
+                <div className="border rounded-md">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2 font-medium">Pack</th>
+                        <th className="text-left p-2 font-medium">Color</th>
+                        <th className="text-left p-2 font-medium">Size</th>
+                        <th className="text-left p-2 font-medium">SKU</th>
+                        <th className="text-left p-2 font-medium">Price</th>
+                        <th className="text-left p-2 font-medium">Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {variations.map((variation) => (
+                        <tr key={variation.id} className="border-b">
+                          <td className="p-2">{variation.pack}</td>
+                          <td className="p-2">{variation.color}</td>
+                          <td className="p-2">{variation.size}</td>
+                          <td className="p-2">
+                            <Input
+                              value={variation.sku}
+                              onChange={(e) => {
+                                setVariations(prev =>
+                                  prev.map(v =>
+                                    v.id === variation.id 
+                                      ? {...v, sku: e.target.value}
+                                      : v
+                                  )
+                                )
+                              }}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              value={variation.price}
+                              onChange={(e) => {
+                                setVariations(prev =>
+                                  prev.map(v =>
+                                    v.id === variation.id
+                                      ? {...v, price: Number(e.target.value)}
+                                      : v
+                                  )
+                                )
+                              }}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              value={variation.stock}
+                              onChange={(e) => {
+                                setVariations(prev =>
+                                  prev.map(v =>
+                                    v.id === variation.id
+                                      ? {...v, stock: Number(e.target.value)}
+                                      : v
+                                  )
+                                )
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button type="button" variant="outline" onClick={closeDialog}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (activeTab === 'details') {
+                    form.handleSubmit(onSubmit)()
+                  } else {
+                    // Save variations along with the form data
+                    const formData = form.getValues()
+                    onSubmit({
+                      ...formData,
+                      variations: variations
+                    })
+                  }
+                }}
+              >
+                {editingBundle ? "Update Bundle" : "Create Bundle"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -1775,163 +1829,6 @@ export function BundlesPage() {
                         <div>
                           <h5 className="text-xs font-semibold uppercase text-muted-foreground">Sizes</h5>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {bundle.sizeOptions.map((size) => (
-                              <span
-                                key={size}
-                                className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs font-medium"
-                              >
-                                {size}
-                                {bundle.sizePriceVariation && bundle.sizePriceVariation[size] ? (
-                                  <span className="text-emerald-600">
-                                    {`+${formatCurrency(bundle.sizePriceVariation[size])}`}
-                        </span>
-                                ) : null}
-                              </span>
-                            ))}
-                      </div>
-                        </div>
-                      )}
-                      {bundle.lengthOptions && bundle.lengthOptions.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold uppercase text-muted-foreground">Lengths</h5>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {bundle.lengthOptions.map((option) => (
-                              <span key={option} className="rounded-full border bg-muted px-3 py-1 text-xs font-medium">
-                                {option}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="mb-3 font-medium">Pricing Details</h4>
-                    <div className="space-y-2 text-sm">
-                      {typeof bundle.basePrice === "number" && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Base Price:</span>
-                          <span className="line-through">{formatCurrency(bundle.basePrice)}</span>
-                        </div>
-                      )}
-                      {typeof bundle.discountedPrice === "number" && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Discounted:</span>
-                          <span>{formatCurrency(bundle.discountedPrice)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-medium">
-                        <span>Featured:</span>
-                        <span className="text-green-600">
-                          {formatCurrency(bundle.finalPrice ?? bundle.bundlePrice ?? 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Bundle Price:</span>
-                        <span>{formatCurrency(bundle.bundlePrice ?? 0)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">You Save:</span>
-                        <span className="text-green-600 font-medium">
-                          {formatCurrency(savings)} ({percentage}%)
-                        </span>
-                      </div>
-                      {bundle.dealTag && <div className="text-xs font-semibold uppercase text-amber-600">{bundle.dealTag}</div>}
-                      <div className="space-y-2 pt-2 text-sm">
-                      {bundle.startDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>Starts: {formatDate(bundle.startDate)}</span>
-                        </div>
-                      )}
-                      {bundle.endDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>Ends: {formatDate(bundle.endDate)}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-muted-foreground" />
-                        <span>Discount: {percentage}% off</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                  <div>
-                    <h4 className="mb-3 font-medium">Media</h4>
-                    <div className="space-y-3">
-                      <div className="relative aspect-[4/3] overflow-hidden rounded-md border bg-muted/40">
-                        <img
-                          src={
-                            bundle.heroImage
-                              ? getFullImageUrl(bundle.heroImage)
-                              : bundle.galleryImages && bundle.galleryImages.length > 0
-                                ? getFullImageUrl(bundle.galleryImages[0])
-                                : "/placeholder.svg"
-                          }
-                          alt={`${bundle.name} hero`}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      {bundle.galleryImages && bundle.galleryImages.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2">
-                          {bundle.galleryImages.slice(0, 3).map((image) => (
-                            <div key={image} className="relative aspect-[4/3] overflow-hidden rounded-md border bg-muted/20">
-                              <img
-                                src={getFullImageUrl(image)}
-                                alt={`${bundle.name} gallery`}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {bundle.guarantees && bundle.guarantees.length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <h4 className="font-medium">Guarantees</h4>
-                    <div className="flex flex-wrap gap-3">
-                      {bundle.guarantees.map((item, index) => (
-                        <div key={`${item.title}-${index}`} className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-                          <div className="font-semibold">{item.title}</div>
-                          {item.description && (
-                            <div className="text-xs text-muted-foreground">{item.description}</div>
-                          )}
-                          {item.icon && <div className="text-xs text-muted-foreground">{item.icon}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-
-        {bundles.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No bundles created yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first product bundle to offer special deals to customers
-              </p>
-              <Button onClick={() => openDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Bundle
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  )
-}
                             {bundle.sizeOptions.map((size) => (
                               <span
                                 key={size}
