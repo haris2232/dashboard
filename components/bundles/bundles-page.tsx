@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -19,12 +18,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { bundleAPI, type Bundle } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Edit, Trash2, Package, Calendar, Percent, ImageIcon, Upload, Loader2, X } from "lucide-react"
 import { Plus, Edit, Trash2, Package, Calendar, Percent, ImageIcon, Upload, Loader2, X, Star } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
@@ -40,14 +37,10 @@ const bundleSchema = z.object({
   basePrice: z.string().optional(),
   discountedPrice: z.string().optional(),
   finalPrice: z.string().optional(),
-  dealTag: z.string().optional(),
-  bundlePrice: z.string().min(1, "Bundle price is required"),
   dealTag: z.string().optional(), // This seems to be for display
-
   // This seems to be the primary price for the bundle, let's rename for clarity
   // and make it optional if prices are defined per-variant.
   defaultPrice: z.string().optional(),
-
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isActive: z.boolean(),
@@ -168,8 +161,6 @@ export function BundlesPage() {
       basePrice: "",
       discountedPrice: "",
       finalPrice: "",
-      dealTag: "",
-      bundlePrice: "",
       dealTag: "", // Renamed from bundlePrice
       defaultPrice: "",
       startDate: "",
@@ -576,8 +567,6 @@ export function BundlesPage() {
         basePrice: bundle.basePrice !== undefined ? String(bundle.basePrice) : "",
         discountedPrice: bundle.discountedPrice !== undefined ? String(bundle.discountedPrice) : "",
         finalPrice: bundle.finalPrice !== undefined ? String(bundle.finalPrice) : "",
-        dealTag: bundle.dealTag || "",
-        bundlePrice: bundle.bundlePrice !== undefined ? String(bundle.bundlePrice) : "",
         dealTag: bundle.dealTag || "", // This is correct
         defaultPrice: bundle.bundlePrice !== undefined ? String(bundle.bundlePrice) : "", // Mapped to defaultPrice
         startDate: bundle.startDate || "",
@@ -717,7 +706,6 @@ export function BundlesPage() {
       const basePrice = values.basePrice?.trim() ? Number(values.basePrice) : undefined
       const discountedPrice = values.discountedPrice?.trim() ? Number(values.discountedPrice) : undefined
       const finalPrice = values.finalPrice?.trim() ? Number(values.finalPrice) : undefined
-      const bundlePriceNumeric = Number.parseFloat(values.bundlePrice)
       const defaultPriceNumeric = values.defaultPrice ? Number.parseFloat(values.defaultPrice) : 0
 
       const guaranteesPayload = guarantees
@@ -730,7 +718,6 @@ export function BundlesPage() {
 
       const bundleData: any = {
         ...values,
-        bundlePrice: bundlePriceNumeric,
         bundlePrice: defaultPriceNumeric, // This is the main/default price
         products: [],
         heroImage: heroImageValue,
@@ -745,7 +732,6 @@ export function BundlesPage() {
         reviewsCount,
         basePrice,
         discountedPrice,
-        finalPrice: finalPrice ?? bundlePriceNumeric,
         discountedPrice, // This is the main/default price
         finalPrice: finalPrice ?? defaultPriceNumeric,
         dealTag: values.dealTag?.trim() || undefined,
@@ -824,7 +810,6 @@ export function BundlesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Product Bundles</h1>
@@ -837,19 +822,14 @@ export function BundlesPage() {
               Create Bundle
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingBundle ? "Edit Bundle" : "Create New Bundle"}</DialogTitle>
               <DialogDescription>
-                {editingBundle ? "Update bundle information" : "Create a new product bundle with special pricing"}
                 {editingBundle ? "Update bundle information and variations." : "Create a new product bundle with all its options and variations."}
               </DialogDescription>
             </DialogHeader>
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details">Bundle Details</TabsTrigger>
@@ -878,11 +858,9 @@ export function BundlesPage() {
 
                   <FormField
                     control={form.control}
-                    name="bundlePrice"
                     name="defaultPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Bundle Price </FormLabel>
                         <FormLabel>Default Price</FormLabel>
                         <FormControl>
                           <Input type="number" step="0.01" placeholder="0.00" {...field} />
@@ -984,8 +962,7 @@ export function BundlesPage() {
                       </FormItem>
                     )}
                   />
-                </div>
-
+                    </div>
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
