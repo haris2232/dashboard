@@ -37,6 +37,7 @@ const bundleSchema = z.object({
   basePrice: z.string().optional(),
   discountedPrice: z.string().optional(),
   finalPrice: z.string().optional(),
+  dealTag: z.string().optional(),
   dealTag: z.string().optional(), // This seems to be for display
   // This seems to be the primary price for the bundle, let's rename for clarity
   // and make it optional if prices are defined per-variant.
@@ -161,6 +162,7 @@ export function BundlesPage() {
       basePrice: "",
       discountedPrice: "",
       finalPrice: "",
+      dealTag: "",
       dealTag: "", // Renamed from bundlePrice
       defaultPrice: "",
       startDate: "",
