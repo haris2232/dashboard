@@ -25,6 +25,7 @@ import { bundleAPI, type Bundle } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { Plus, Edit, Trash2, Package, Calendar, Percent, ImageIcon, Upload, Loader2, X } from "lucide-react"
+import { Plus, Edit, Trash2, Package, Calendar, Percent, ImageIcon, Upload, Loader2, X, Star } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 const bundleSchema = z.object({
@@ -922,6 +923,7 @@ export function BundlesPage() {
                   />
                 </div>
 
+                    </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1978,6 +1980,11 @@ export function BundlesPage() {
             </CardContent>
           </Card>
         )}
+      <div className="flex justify-end space-x-2 pt-6 border-t">
+        <Button type="button" variant="outline" onClick={closeDialog}>
+          Cancel
+        </Button>
+        <Button form="bundle-form" type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
       </div>
     </div>
   )
@@ -2011,6 +2018,7 @@ export function BundlesPage() {
       </div>
 
       <div className="grid gap-6">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {bundles.map((bundle) => {
           const { savings, percentage } = calculateSavings(
             bundle.basePrice ?? bundle.originalPrice,
