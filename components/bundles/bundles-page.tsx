@@ -840,37 +840,37 @@ export function BundlesPage() {
             </div>
 
             {activeTab === 'details' ? (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bundle Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter bundle name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bundle Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter bundle name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    <FormField
-                      control={form.control}
-                      name="bundlePrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bundle Price </FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="bundlePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bundle Price </FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -1120,53 +1120,53 @@ export function BundlesPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                </div>
 
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter bundle description" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="description"
+                    name="startDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>Start Date (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Enter bundle description" {...field} />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="startDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Start Date (Optional)</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>End Date (Optional)</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                    <FormField
-                      control={form.control}
-                      name="endDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End Date (Optional)</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <FormLabel className="text-base font-medium">Pack Options</FormLabel>
                       <Button type="button" variant="secondary" onClick={addPackOption}>
@@ -1174,7 +1174,7 @@ export function BundlesPage() {
                         Add Pack
                       </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                       Define the quantity packs available for this bundle. Per-item pricing updates automatically.
                     </p>
                     <div className="space-y-4">
@@ -1512,7 +1512,7 @@ export function BundlesPage() {
                                   value={sizePriceVariation[size] ?? 0}
                                   onChange={(event) => updateSizePriceVariation(size, Number(event.target.value))}
                                 />
-                              </div>
+                            </div>
                             ))}
                           </div>
                         </div>
@@ -1552,9 +1552,9 @@ export function BundlesPage() {
                             </button>
                           </span>
                         ))}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      )}
+                    </div>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -1604,32 +1604,32 @@ export function BundlesPage() {
                         <p className="text-sm text-muted-foreground">No highlights added. Use “Add Highlight” to showcase guarantees.</p>
                       )}
                     </div>
-                  </div>
+                </div>
 
-                  <FormField
-                    control={form.control}
-                    name="isActive"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Active Bundle</FormLabel>
-                          <div className="text-sm text-muted-foreground">Bundle will be available for purchase</div>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Active Bundle</FormLabel>
+                        <div className="text-sm text-muted-foreground">Bundle will be available for purchase</div>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
-                  </div>
-                </form>
-              </Form>
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={closeDialog}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">{editingBundle ? "Update Bundle" : "Create Bundle"}</Button>
+                </div>
+              </form>
+            </Form>
             ) : (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
