@@ -1,62 +1,28 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { bundleAPI, productAPI, type Bundle, type Product } from "@/lib/api"
+import { bundleAPI, type Bundle } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Edit, Trash2, Package, DollarSign, Calendar, Percent } from "lucide-react"
+import { Plus, Edit, Trash2, Package, Calendar, Percent, Search, XCircle } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-
-const bundleSchema = z.object({
-  name: z.string().min(1, "Bundle name is required"),
-  description: z.string().optional(),
-  bundlePrice: z.string().min(1, "Bundle price is required"),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  isActive: z.boolean(),
-})
+import { BundleDialog } from "./bundle-dialog"
 
 export function BundlesPage() {
   const [bundles, setBundles] = useState<Bundle[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBundle, setEditingBundle] = useState<Bundle | null>(null)
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null)
+  const [selectedBundles, setSelectedBundles] = useState<string[]>([])
   const { toast } = useToast()
-
-  const form = useForm<z.infer<typeof bundleSchema>>({
-    resolver: zodResolver(bundleSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      bundlePrice: "",
-      startDate: "",
-      endDate: "",
-      isActive: true,
-    },
-  })
 
   useEffect(() => {
     loadData()
@@ -65,9 +31,8 @@ export function BundlesPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [bundlesResponse, productsResponse] = await Promise.all([bundleAPI.getBundles(), productAPI.getProducts()])
+      const bundlesResponse = await bundleAPI.getBundles()
       setBundles(bundlesResponse.data)
-      setProducts(productsResponse)
     } catch (error) {
       toast({
         title: "Error",
@@ -79,119 +44,25 @@ export function BundlesPage() {
     }
   }
 
-  const openDialog = (bundle?: Bundle) => {
-    if (bundle) {
-      setEditingBundle(bundle)
-      form.reset({
-        name: bundle.name,
-        description: bundle.description || "",
-        bundlePrice: bundle.bundlePrice.toString(),
-        startDate: bundle.startDate || "",
-        endDate: bundle.endDate || "",
-        isActive: bundle.isActive,
-      })
-      const productIds = bundle.products.map((p) => p._id)
-      setSelectedProducts(productIds)
-      if (productIds.length > 0) {
-        const firstProduct = products.find((p) => p._id === productIds[0])
-        if (firstProduct) {
-          setSelectedCategory(firstProduct.category)
-          setSelectedSubCategory(firstProduct.subCategory)
-        }
-      }
-    } else {
-      setEditingBundle(null)
-      form.reset()
-      setSelectedProducts([])
-      setSelectedCategory(null)
-      setSelectedSubCategory(null)
-    }
+  const handleEdit = (bundle: Bundle) => {
+    setEditingBundle(bundle)
     setDialogOpen(true)
   }
 
-  const closeDialog = () => {
+  const handleAdd = () => {
+    setEditingBundle(null)
+    setDialogOpen(true)
+  }
+
+  const handleDialogClose = (shouldRefresh?: boolean) => {
     setDialogOpen(false)
     setEditingBundle(null)
-    form.reset()
-    setSelectedProducts([])
-    setSelectedCategory(null)
-    setSelectedSubCategory(null)
-  }
-
-  const onSubmit = async (values: z.infer<typeof bundleSchema>) => {
-    if (selectedProducts.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one product for the bundle",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate product count (must be at least 2)
-    if (selectedProducts.length < 2) {
-      toast({
-        title: "Error",
-        description: "Bundle must contain at least 2 products",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      const bundleProducts = products.filter((p) => selectedProducts.includes(p._id))
-      if (bundleProducts.length > 0) {
-        const firstProduct = bundleProducts[0]
-        const allSameCategory = bundleProducts.every(p => p.category === firstProduct.category)
-        const allSameSubCategory = bundleProducts.every(p => p.subCategory === firstProduct.subCategory)
-        if (!allSameCategory || !allSameSubCategory) {
-          toast({
-            title: "Error",
-            description: "All products in a bundle must belong to the same category and sub-category.",
-            variant: "destructive",
-          })
-          return
-        }
-      }
-
-      const originalPrice = bundleProducts.reduce((sum, product) => sum + product.basePrice, 0)
-
-      const bundleData = {
-        ...values,
-        bundlePrice: Number.parseFloat(values.bundlePrice),
-        products: selectedProducts, // Send just the product IDs
-        originalPrice,
-        category: bundleProducts[0].category,
-        subCategory: bundleProducts[0].subCategory,
-        createdAt: editingBundle?.createdAt || new Date().toISOString(),
-      }
-
-      if (editingBundle) {
-        await bundleAPI.updateBundle(editingBundle._id, bundleData)
-        toast({
-          title: "Success",
-          description: "Bundle updated successfully",
-        })
-      } else {
-        await bundleAPI.createBundle(bundleData)
-        toast({
-          title: "Success",
-          description: "Bundle created successfully",
-        })
-      }
-
-      closeDialog()
+    if (shouldRefresh) {
       loadData()
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.error || "Failed to save bundle",
-        variant: "destructive",
-      })
     }
   }
 
-  const deleteBundle = async (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this bundle?")) return
 
     try {
@@ -210,42 +81,55 @@ export function BundlesPage() {
     }
   }
 
-  const toggleProductSelection = (productId: string) => {
-    setSelectedProducts((prev) => {
-      const newSelectedProducts = prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedBundles.length} selected bundles?`)) return
 
-      if (newSelectedProducts.length === 0) {
-        setSelectedCategory(null)
-        setSelectedSubCategory(null)
-      } else if (prev.length === 0 && newSelectedProducts.length === 1) {
-        const firstProduct = products.find((p) => p._id === newSelectedProducts[0])
-        if (firstProduct) {
-          setSelectedCategory(firstProduct.category)
-          setSelectedSubCategory(firstProduct.subCategory)
-        }
-      }
-      return newSelectedProducts
-    })
+    try {
+      await Promise.all(selectedBundles.map((id) => bundleAPI.deleteBundle(id)))
+      toast({
+        title: "Success",
+        description: `${selectedBundles.length} bundles deleted successfully.`,
+      })
+      setSelectedBundles([])
+      loadData()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete some bundles. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const uniqueCategories = [...new Set(products.map((p) => p.category))]
-  const uniqueSubCategories = selectedCategory
-    ? [...new Set(products.filter((p) => p.category === selectedCategory).map((p) => p.subCategory))]
-    : []
-  const filteredProducts = products.filter((product) => {
-    if (selectedCategory && product.category !== selectedCategory) {
-      return false
+  const handleBundleSelect = (bundleId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedBundles((prev) => [...prev, bundleId])
+    } else {
+      setSelectedBundles((prev) => prev.filter((id) => id !== bundleId))
     }
-    if (selectedSubCategory && product.subCategory !== selectedSubCategory) {
-      return false
+  }
+
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedBundles(filteredBundles.map((b) => b._id))
+    } else {
+      setSelectedBundles([])
     }
-    return true
+  }
+
+  const filteredBundles = bundles.filter((bundle) => {
+    const matchesSearch = bundle.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = categoryFilter === "all" || bundle.category === categoryFilter
+    return matchesSearch && matchesCategory
   })
 
+  const areAllVisibleSelected = filteredBundles.length > 0 && selectedBundles.length === filteredBundles.length
+
   const calculateSavings = (originalPrice: number, bundlePrice: number) => {
-    const savings = originalPrice - bundlePrice
+    if (!originalPrice || originalPrice === 0) {
+      return { savings: 0, percentage: '0' };
+    }
+    const savings = originalPrice - bundlePrice;
     const percentage = ((savings / originalPrice) * 100).toFixed(0)
     return { savings, percentage }
   }
@@ -253,14 +137,151 @@ export function BundlesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <LoadingSpinner />
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Product Bundles</h1>
+        <p className="text-muted-foreground">Create and manage product bundles and special offers.</p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Checkbox
+            checked={areAllVisibleSelected}
+            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+            aria-label="Select all bundles on this page"
+            disabled={filteredBundles.length === 0}
+          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search bundles..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="men">Men</SelectItem>
+              <SelectItem value="women">Women</SelectItem>
+              <SelectItem value="mixed">Mixed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedBundles.length > 0 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selectedBundles.length} selected</span>
+            <Button variant="destructive" onClick={handleBulkDelete} className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Delete Selected
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedBundles([])}>
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={handleAdd} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Create Bundle
+          </Button>
+        )}
+      </div>
+
+      <BundleDialog open={dialogOpen} onClose={handleDialogClose} bundle={editingBundle} />
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredBundles.map((bundle) => {
+          const { savings, percentage } = calculateSavings(bundle.originalPrice, bundle.bundlePrice)
+          const isSelected = selectedBundles.includes(bundle._id)
+
+          return (
+            <Card key={bundle._id} className={`transition-all ${isSelected ? "border-primary ring-2 ring-primary" : "hover:shadow-lg"}`}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3 flex-1">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleBundleSelect(bundle._id, !!checked)}
+                      aria-label={`Select bundle ${bundle.name}`}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <CardTitle className="text-lg line-clamp-2">{bundle.name}</CardTitle>
+                      <CardDescription className="mt-1 capitalize">
+                        {bundle.category.charAt(0).toUpperCase() + bundle.category.slice(1)}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex space-x-1 ml-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(bundle)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(bundle._id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="destructive" className="text-xs">
+                        -{percentage}%
+                      </Badge>
+                      <span className="text-2xl font-bold">{formatCurrency(bundle.bundlePrice)}</span>
+                      <span className="text-sm text-muted-foreground line-through">{formatCurrency(bundle.originalPrice)}</span>
+                    </div>
+                    <Badge variant={bundle.isActive ? "default" : "secondary"}>
+                      {bundle.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center">
+                      <Package className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <span>{bundle.products?.length || 0} Products</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-muted-foreground">Save: {formatCurrency(savings)}</span>
+                    </div>
+                  </div>
+                  {bundle.startDate && (
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      Active from {formatDate(bundle.startDate)}
+                      {bundle.endDate && ` to ${formatDate(bundle.endDate)}`}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {filteredBundles.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No bundles found</h3>
+          <p className="text-gray-500">
+            {searchQuery ? "Try adjusting your search terms" : "Get started by creating your first bundle"}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
         <div>
           <h1 className="text-3xl font-bold">Product Bundles</h1>
           <p className="text-muted-foreground">Create and manage product bundles and special offers</p>
