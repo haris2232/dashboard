@@ -1783,7 +1783,7 @@ export function BundlesPage() {
                                 {size}
                                 {bundle.sizePriceVariation && bundle.sizePriceVariation[size] ? (
                                   <span className="text-emerald-600">
-                                    +{formatCurrency(bundle.sizePriceVariation[size])}
+                                    {`+${formatCurrency(bundle.sizePriceVariation[size])}`}
                         </span>
                                 ) : null}
                               </span>
