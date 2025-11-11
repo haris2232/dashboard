@@ -1699,6 +1699,7 @@ let mockUsers: User[] = [
 let mockSettings: Settings = {
   _id: "1",
   currency: "USD",
+  homepageImage1Type: "image",
   homepageImage1: "",
   homepageImage2: "",
   homepageImage3: "",
