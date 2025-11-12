@@ -41,6 +41,11 @@ const bundleSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isActive: z.boolean(),
+  // Add new fields
+  purpose: z.string().optional(),
+  featuresAndFit: z.string().optional(),
+  materialAndCare: z.string().optional(),
+  care: z.string().optional(),
 })
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://athlekt.com/backendnew/api"
@@ -161,6 +166,11 @@ export function BundlesPage() {
       startDate: "",
       endDate: "",
       isActive: true,
+      // Add new fields with empty defaults
+      purpose: "",
+      featuresAndFit: "",
+      materialAndCare: "",
+      care: "",
     },
   })
 
@@ -533,6 +543,11 @@ export function BundlesPage() {
         startDate: bundle.startDate || "",
         endDate: bundle.endDate || "",
         isActive: bundle.isActive,
+        // Add new fields
+        purpose: bundle.purpose || "",
+        featuresAndFit: bundle.featuresAndFit || "",
+        materialAndCare: bundle.materialAndCare || "",
+        care: bundle.care || "",
       })
       setHeroImage(bundle.heroImage || "")
       setGalleryImages(bundle.galleryImages || [])
@@ -720,6 +735,11 @@ export function BundlesPage() {
         dealTag: values.dealTag?.trim() || undefined,
         originalPrice: basePrice ?? bundlePriceNumeric,
         createdAt: editingBundle?.createdAt || new Date().toISOString(),
+        // Add new fields
+        purpose: values.purpose?.trim() || undefined,
+        featuresAndFit: values.featuresAndFit?.trim() || undefined,
+        materialAndCare: values.materialAndCare?.trim() || undefined,
+        care: values.care?.trim() || undefined,
       }
 
       bundleData.productSlug = values.productSlug?.trim() || undefined
@@ -1136,6 +1156,75 @@ export function BundlesPage() {
                   )}
                 />
 
+                {/* NEW FIELDS ADDED HERE */}
+                <FormField
+                  control={form.control}
+                  name="purpose"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PURPOSE</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Describe the purpose of this bundle..." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="featuresAndFit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>FEATURES & FIT</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Describe features and fit details..." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="materialAndCare"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>MATERIAL & CARE</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Describe materials and care instructions..." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="care"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CARE</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Provide additional care instructions..." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1457,7 +1546,7 @@ export function BundlesPage() {
                       ))}
                       {colorOptions.length === 0 && (
                         <p className="text-sm text-muted-foreground">
-                          No colors added yet. Use “Add Color” to create a color set.
+                          No colors added yet. Use "Add Color" to create a color set.
                         </p>
                       )}
                     </div>
@@ -1601,7 +1690,7 @@ export function BundlesPage() {
                         </div>
                       ))}
                       {guarantees.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No highlights added. Use “Add Highlight” to showcase guarantees.</p>
+                        <p className="text-sm text-muted-foreground">No highlights added. Use "Add Highlight" to showcase guarantees.</p>
                       )}
                     </div>
                 </div>
@@ -1945,6 +2034,39 @@ export function BundlesPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Display new fields in bundle card */}
+                {(bundle.purpose || bundle.featuresAndFit || bundle.materialAndCare || bundle.care) && (
+                  <div className="mt-6 space-y-4">
+                    <h4 className="font-medium">Product Details</h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {bundle.purpose && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium">PURPOSE</h5>
+                          <p className="text-sm text-muted-foreground">{bundle.purpose}</p>
+                        </div>
+                      )}
+                      {bundle.featuresAndFit && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium">FEATURES & FIT</h5>
+                          <p className="text-sm text-muted-foreground">{bundle.featuresAndFit}</p>
+                        </div>
+                      )}
+                      {bundle.materialAndCare && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium">MATERIAL & CARE</h5>
+                          <p className="text-sm text-muted-foreground">{bundle.materialAndCare}</p>
+                        </div>
+                      )}
+                      {bundle.care && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium">CARE</h5>
+                          <p className="text-sm text-muted-foreground">{bundle.care}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {bundle.guarantees && bundle.guarantees.length > 0 && (
                   <div className="mt-6 space-y-2">
