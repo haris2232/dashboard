@@ -153,6 +153,10 @@ export interface Bundle {
   _id: string
   name: string
   description?: string
+  purpose?: string
+  featuresAndFit?: string
+  materialAndCare?: string
+  care?: string
   productSlug?: string
   shortDescription?: string
   heroImage?: string

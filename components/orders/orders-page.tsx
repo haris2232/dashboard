@@ -588,14 +588,30 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                 {order.items?.map((item, index) => (
                   <div key={index} className="flex items-center justify-between p-3 border rounded">
                     <div className="flex-1">
-                      <div className="font-medium">{item.product.title}</div>
-                      {item.variant && (
+                      <div className="font-medium">{item.productName || item.product?.title || 'Unknown Product'}</div>
+                      {item.isBundle && item.bundleDetails && (
+                        <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                          {item.bundleDetails.selectedPack && (
+                            <div>Pack: {item.bundleDetails.selectedPack.name} ({item.bundleDetails.selectedPack.quantity} pieces)</div>
+                          )}
+                          {item.bundleDetails.selectedColor?.name && (
+                            <div>Color: {item.bundleDetails.selectedColor.name}</div>
+                          )}
+                          {item.bundleDetails.selectedSize && (
+                            <div>Size: {item.bundleDetails.selectedSize}</div>
+                          )}
+                          {item.bundleDetails.selectedLength && (
+                            <div>Length: {item.bundleDetails.selectedLength}</div>
+                          )}
+                        </div>
+                      )}
+                      {!item.isBundle && item.variant && (
                         <div className="text-sm text-muted-foreground">
-                          {item.variant.size} / {item.variant.color?.name || 'N/A'}
+                          {item.variant.size} / {item.variant.color?.name || item.variant.color || 'N/A'}
                         </div>
                       )}
                       <div className="text-sm text-muted-foreground">
-                        SKU: {item.variant?.sku || item.product.baseSku}
+                        SKU: {item.variant?.sku || item.product?.baseSku || 'N/A'}
                       </div>
                     </div>
                     <div className="text-right">
