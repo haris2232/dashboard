@@ -505,6 +505,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           <SelectContent>
                             <SelectItem value="Men">Men</SelectItem>
                             <SelectItem value="Women">Women</SelectItem>
+                            <SelectItem value="Sets">Sets</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

@@ -301,9 +301,11 @@ export function CategoriesPage() {
                     required
                     className="flex-1 w-full h-10 border border-input bg-background px-3 py-2 text-sm rounded-md"
                 >
-                    <option value="">Select parent category</option>
-                    <option value="Men">Men</option>
-                    <option value="Women">Women</option>
+                  <option value="">Select parent category</option>
+                  {/* Filter for top-level categories only */}
+                  {categories.filter(c => !c.parent).map((cat) => (
+                    <option key={cat._id} value={cat.name}>{cat.name}</option>
+                  ))}
                 </select>
                 <Button type="submit">
                     {editing ? "Update Sub-Category" : "Add Sub-Category"}
