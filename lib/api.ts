@@ -75,12 +75,43 @@ export interface Order {
   customer: {
     name: string
     email: string
+    phone?: string
+    address?: {
+      street: string
+      city: string
+      state: string
+      zipCode: string
+      country: string
+    }
   }
   total: number
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled"
+  paymentStatus?: "pending" | "paid" | "failed"
   items: Array<{
-    product: Product
-    variant?: ProductVariant
+    product?: Product
+    productName?: string
+    variant?: {
+      size?: string
+      color?: string
+      sku?: string
+    }
+    isBundle?: boolean
+    bundleDetails?: {
+      selectedPack?: {
+        name: string
+        quantity: number
+        totalPrice: number
+        pricePerItem: number
+        tag?: string
+      }
+      selectedSize?: string
+      selectedLength?: string
+      selectedColor?: {
+        name: string
+        description?: string
+      }
+      dealTag?: string
+    }
     quantity: number
     price: number
   }>
@@ -540,17 +571,37 @@ export const orderAPI = {
           customer: {
             name: order.customer.name,
             email: order.customer.email,
+            phone: order.customer.phone,
+            address: order.customer.address,
           },
           total: order.total,
           status: order.status,
-          items: order.items.map((item: any) => ({
-            product: {
-              _id: item.productId,
-              title: item.productName,
-            },
-            quantity: item.quantity,
-            price: item.price,
-          })),
+          paymentStatus: order.paymentStatus,
+          items: order.items.map((item: any) => {
+            // Handle populated productId (can be object or string/ObjectId)
+            const productId = item.productId?._id || item.productId;
+            const productObject = typeof item.productId === 'object' && item.productId !== null 
+              ? item.productId 
+              : null;
+            
+            return {
+              product: productId ? {
+                _id: productId,
+                title: productObject?.title || item.productName,
+                baseSku: productObject?.baseSku || item.variant?.sku || undefined,
+              } : undefined,
+              productName: item.productName,
+              variant: item.variant ? {
+                size: item.variant.size,
+                color: item.variant.color,
+                sku: item.variant.sku,
+              } : undefined,
+              isBundle: item.isBundle || false,
+              bundleDetails: item.bundleDetails || undefined,
+              quantity: item.quantity,
+              price: item.price,
+            };
+          }),
           trackingNumber: order.trackingNumber,
           carrier: order.shippingMethod,
           createdAt: order.createdAt,
@@ -577,17 +628,37 @@ export const orderAPI = {
           customer: {
             name: order.customer.name,
             email: order.customer.email,
+            phone: order.customer.phone,
+            address: order.customer.address,
           },
           total: order.total,
           status: order.status,
-          items: order.items.map((item: any) => ({
-            product: {
-              _id: item.productId,
-              title: item.productName,
-            },
-            quantity: item.quantity,
-            price: item.price,
-          })),
+          paymentStatus: order.paymentStatus,
+          items: order.items.map((item: any) => {
+            // Handle populated productId (can be object or string/ObjectId)
+            const productId = item.productId?._id || item.productId;
+            const productObject = typeof item.productId === 'object' && item.productId !== null 
+              ? item.productId 
+              : null;
+            
+            return {
+              product: productId ? {
+                _id: productId,
+                title: productObject?.title || item.productName,
+                baseSku: productObject?.baseSku || item.variant?.sku || undefined,
+              } : undefined,
+              productName: item.productName,
+              variant: item.variant ? {
+                size: item.variant.size,
+                color: item.variant.color,
+                sku: item.variant.sku,
+              } : undefined,
+              isBundle: item.isBundle || false,
+              bundleDetails: item.bundleDetails || undefined,
+              quantity: item.quantity,
+              price: item.price,
+            };
+          }),
           trackingNumber: order.trackingNumber,
           carrier: order.shippingMethod,
           createdAt: order.createdAt,

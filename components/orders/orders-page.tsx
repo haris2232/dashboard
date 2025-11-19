@@ -607,7 +607,9 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                       )}
                       {!item.isBundle && item.variant && (
                         <div className="text-sm text-muted-foreground">
-                          {item.variant.size} / {item.variant.color?.name || item.variant.color || 'N/A'}
+                          {item.variant.size ? `Size: ${item.variant.size}` : ''}
+                          {item.variant.size && item.variant.color ? ' • ' : ''}
+                          {item.variant.color ? `Color: ${item.variant.color}` : ''}
                         </div>
                       )}
                       <div className="text-sm text-muted-foreground">
