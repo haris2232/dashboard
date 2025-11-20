@@ -57,16 +57,35 @@ export function HomepageImagesPage() {
   };
 
   const handleImageUpload = async (file: File, field: keyof Settings) => {
+    // Validate file size (500MB limit for videos, 50MB for images)
+    const maxSize = field === "homepageImage1" ? 500 * 1024 * 1024 : 50 * 1024 * 1024; // 500MB for video, 50MB for images
+    if (file.size > maxSize) {
+      const maxSizeMB = maxSize / (1024 * 1024);
+      toast({
+        title: "File too large",
+        description: `File size exceeds ${maxSizeMB}MB limit. Please choose a smaller file.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(field);
     try {
       const formData = new FormData();
       // The single image upload endpoint expects the field name to be 'image'
       formData.append("image", file);
 
+      // Create AbortController for timeout (30 minutes for large videos)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30 * 60 * 1000); // 30 minutes timeout
+
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -90,9 +109,17 @@ export function HomepageImagesPage() {
       });
     } catch (error: any) {
       console.error("Error uploading file:", error);
+      let errorMessage = "Failed to upload file. Please try again.";
+      
+      if (error.name === 'AbortError') {
+        errorMessage = "Upload timeout. The file is too large or connection is slow. Please try again or use a smaller file.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Upload Failed",
-        description: error.message || "Failed to upload file. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

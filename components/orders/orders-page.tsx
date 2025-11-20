@@ -260,6 +260,12 @@ export function OrdersPage() {
   }
 
   const filteredOrders = orders.filter((order) => {
+    // Hide pending orders that have been paid (to avoid showing duplicate orders)
+    // If paymentStatus is 'paid', don't show orders with status 'pending'
+    if (order.paymentStatus === 'paid' && order.status === 'pending') {
+      return false
+    }
+
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
