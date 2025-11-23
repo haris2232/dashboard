@@ -77,15 +77,15 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
         form.reset({
           name: rule.name,
           region: rule.region,
-          minWeight: rule.minWeight.toString(),
-          maxWeight: rule.maxWeight.toString(),
-          minOrderAmount: rule.minOrderAmount.toString(),
-          maxOrderAmount: rule.maxOrderAmount.toString(),
-          shippingCost: rule.shippingCost.toString(),
-          freeShippingAt: rule.freeShippingAt.toString(),
-          deliveryDays: rule.deliveryDays.toString(),
+          minWeight: rule.minWeight?.toString() || "",
+          maxWeight: rule.maxWeight?.toString() || "",
+          minOrderAmount: rule.minOrderAmount?.toString() || "",
+          maxOrderAmount: rule.maxOrderAmount?.toString() || "",
+          shippingCost: rule.shippingCost?.toString() || "",
+          freeShippingAt: rule.freeShippingAt?.toString() || "",
+          deliveryDays: rule.deliveryDays?.toString() || "3",
           isActive: rule.isActive,
-          priority: rule.priority.toString(),
+          priority: rule.priority?.toString() || "1",
         })
       } else {
         // Create mode
@@ -109,17 +109,21 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
   const onSubmit = async (values: z.infer<typeof shippingRuleSchema>) => {
     try {
       setSaving(true)
+      
+      // Convert string values to numbers with proper handling
       const ruleData = {
         ...values,
-        minWeight: values.minWeight ? Number.parseFloat(values.minWeight) : 0,
-        maxWeight: values.maxWeight ? Number.parseFloat(values.maxWeight) : 100,
-        minOrderAmount: values.minOrderAmount ? Number.parseFloat(values.minOrderAmount) : 0,
-        maxOrderAmount: values.maxOrderAmount ? Number.parseFloat(values.maxOrderAmount) : 10000,
-        shippingCost: Number.parseFloat(values.shippingCost),
-        freeShippingAt: values.freeShippingAt ? Number.parseFloat(values.freeShippingAt) : 50,
-        deliveryDays: Number.parseInt(values.deliveryDays),
-        priority: values.priority ? Number.parseInt(values.priority) : 1,
+        minWeight: values.minWeight ? parseFloat(values.minWeight) : 0,
+        maxWeight: values.maxWeight ? parseFloat(values.maxWeight) : 100,
+        minOrderAmount: values.minOrderAmount ? parseFloat(values.minOrderAmount) : 0,
+        maxOrderAmount: values.maxOrderAmount ? parseFloat(values.maxOrderAmount) : 10000,
+        shippingCost: values.shippingCost ? parseFloat(values.shippingCost) : 0,
+        freeShippingAt: values.freeShippingAt ? parseFloat(values.freeShippingAt) : 0, // Aap jo bhi amount dalenge wahi save hoga
+        deliveryDays: values.deliveryDays ? parseInt(values.deliveryDays) : 3,
+        priority: values.priority ? parseInt(values.priority) : 1,
       }
+
+      console.log('Saving shipping rule:', ruleData)
 
       if (rule) {
         await shippingAPI.updateShippingRule(rule._id, ruleData)
@@ -136,6 +140,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
       }
 
       onSave()
+      onClose()
     } catch (error) {
       console.error("Error saving shipping rule:", error)
       toast({
@@ -167,7 +172,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                   <FormItem>
                     <FormLabel>Rule Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., US Standard Shipping" {...field} />
+                      <Input placeholder="e.g., Standard Shipping" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -188,11 +193,11 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="UAE">United Arab Emirates</SelectItem>
                         <SelectItem value="INTL">International</SelectItem>
                         <SelectItem value="EU">Europe</SelectItem>
                         <SelectItem value="ASIA">Asia</SelectItem>
                         <SelectItem value="GLOBAL">Global</SelectItem>
-
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -253,7 +258,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                   <FormItem>
                     <FormLabel>Max Order Amount (AED)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="100" {...field} />
+                      <Input type="number" step="0.01" placeholder="10000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -269,7 +274,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                   <FormItem>
                     <FormLabel>Shipping Cost (AED)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="9.99" {...field} />
+                      <Input type="number" step="0.01" placeholder="20.00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -283,8 +288,16 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                   <FormItem>
                     <FormLabel>Free Shipping At (AED)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="50" {...field} />
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="230" 
+                        {...field} 
+                      />
                     </FormControl>
+                    <FormDescription>
+                      Enter amount for free shipping (230, 240, 250, etc.)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -351,4 +364,4 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
       </DialogContent>
     </Dialog>
   )
-} 
+}
