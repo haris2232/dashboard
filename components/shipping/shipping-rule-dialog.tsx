@@ -192,8 +192,8 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="US">United States</SelectItem>
-                        <SelectItem value="UAE">United Arab Emirates</SelectItem>
+                        <SelectItem value="US">United Arab Emirates</SelectItem>
+                        <SelectItem value="UAE">United States</SelectItem>
                         <SelectItem value="INTL">International</SelectItem>
                         <SelectItem value="EU">Europe</SelectItem>
                         <SelectItem value="ASIA">Asia</SelectItem>
