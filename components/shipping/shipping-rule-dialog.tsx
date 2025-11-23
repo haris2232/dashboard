@@ -192,8 +192,7 @@ export function ShippingRuleDialog({ open, onClose, onSave, rule }: ShippingRule
                         <SelectItem value="EU">Europe</SelectItem>
                         <SelectItem value="ASIA">Asia</SelectItem>
                         <SelectItem value="GLOBAL">Global</SelectItem>
-                        <SelectItem value="UAE">UAE</SelectItem>
-                        <SelectItem value="GCC">GCC</SelectItem>
+
                       </SelectContent>
                     </Select>
                     <FormMessage />
