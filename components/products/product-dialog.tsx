@@ -409,23 +409,18 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         return
       }
 
-      const ensureAbsolutePath = (path: string | null | undefined) => {
-        if (!path) return path;
-        return path.startsWith('/') ? path : `/${path}`;
-      }
-
              const productData = {
          ...values,
          basePrice: Number.parseFloat(values.basePrice),
          discountPercentage: values.discountPercentage ? Number.parseFloat(values.discountPercentage) : undefined,
          reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
          sizeOptions,
-         colorOptions: colorOptions.map(c => ({...c, value: ensureAbsolutePath(c.value) as string })),
+         colorOptions,
          variants,
          defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
-         images: images.map(img => ensureAbsolutePath(img) as string),
-         highlightImage: values.isProductHighlight ? ensureAbsolutePath(values.highlightImage) : null,
-         sizeGuideImage: ensureAbsolutePath(values.sizeGuideImage) || "",
+         images: images.length > 0 ? images : (product?.images || []),
+         highlightImage: values.isProductHighlight ? values.highlightImage || null : null,
+         sizeGuideImage: values.sizeGuideImage || "",
        }
 
       if (product) {
