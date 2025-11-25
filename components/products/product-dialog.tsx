@@ -80,6 +80,22 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
   };
 
+  // Helper function to normalize image paths for storage
+  const normalizeImagePath = (url: string): string => {
+    if (!url) return "";
+    // If it's already a relative path, return as is
+    if (!url.startsWith('http')) {
+      return url.startsWith('/') ? url : `/${url}`;
+    }
+    // If it's a full URL, extract just the path part for storage
+    try {
+      const urlObj = new URL(url);
+      return urlObj.pathname;
+    } catch {
+      return url;
+    }
+  };
+
   useEffect(() => {
     if (open) {
       fetchSubCategories()
@@ -133,7 +149,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   }, [form])
 
   useEffect(() => {
-    if (product) {
+    if (product && open) {
+      console.log('🔄 Loading product data:', {
+        productImages: product.images,
+        productHighlightImage: product.highlightImage,
+        productSizeGuideImage: product.sizeGuideImage
+      });
+
       form.reset({
         title: product.title,
         basePrice: product.basePrice.toString(),
@@ -149,24 +171,18 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         reviewRating: product.reviewRating?.toString() || "5",
         isActive: product.isActive,
         isProductHighlight: product.isProductHighlight || false,
-        highlightImage: product.highlightImage ? (product.highlightImage.startsWith('http') ? new URL(product.highlightImage).pathname : product.highlightImage) : "",
-        sizeGuideImage: product.sizeGuideImage ? (product.sizeGuideImage.startsWith('http') ? new URL(product.sizeGuideImage).pathname : product.sizeGuideImage) : "",
+        highlightImage: product.highlightImage || "",
+        sizeGuideImage: product.sizeGuideImage || "",
       })
-      // Ensure we store relative paths, not full URLs
-      const imagePaths = product.images ? product.images.map(img => {
-        // If it's a full URL, extract just the path part
-        if (img.startsWith('http')) {
-          const url = new URL(img);
-          return url.pathname;
-        }
-        return img;
-      }) : [];
-      setImages(imagePaths)
-      setSizeOptions(product.sizeOptions)
-      setColorOptions(product.colorOptions)
-      setVariants(product.variants)
+
+      // Load images - store them as they are from the API
+      setImages(product.images || [])
+      setSizeOptions(product.sizeOptions || [])
+      setColorOptions(product.colorOptions || [])
+      setVariants(product.variants || [])
       setDefaultVariant(product.defaultVariant || "")
-    } else {
+    } else if (open) {
+      // Reset form for new product
       form.reset({
         title: "",
         basePrice: "",
@@ -215,7 +231,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       })
       setVariants(newVariants)
     } else {
-        setVariants([]); // Clear variants if no sizes or colors
+        setVariants([]);
     }
   }, [sizeOptions, colorOptions, form])
 
@@ -224,8 +240,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     try {
       setUploadingImages(true)
       const fileArray = Array.from(files)
-      const uploadedUrls = await productAPI.uploadImages(fileArray) // This correctly calls the endpoint for multiple images
-      setImages(prev => [...prev, ...uploadedUrls])
+      const uploadedUrls = await productAPI.uploadImages(fileArray)
+      
+      // Normalize the uploaded URLs for consistent storage
+      const normalizedUrls = uploadedUrls.map(url => normalizeImagePath(url))
+      
+      setImages(prev => [...prev, ...normalizedUrls])
       toast({
         title: "Success",
         description: `${files.length} image(s) uploaded successfully`,
@@ -241,7 +261,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       setUploadingImages(false)
     }
   }
- 
+
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index))
   }
@@ -278,7 +298,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     setSizeOptions(sizeOptions.filter((s) => s !== size))
   }
 
-  // 🔧 MODIFIED: `addColor` function now accepts an optional URL.
   const addColor = (imageUrl?: string) => {
     if (newColorName && !colorOptions.find((c) => c.name === newColorName)) {
         const value = colorInputType === 'image' ? imageUrl : newColorValue;
@@ -297,7 +316,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             {
                 name: newColorName,
                 type: colorInputType,
-                value: value,
+                value: colorInputType === 'hex' ? value : normalizeImagePath(value),
             },
         ]);
         setNewColorName("");
@@ -309,16 +328,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     setColorOptions(colorOptions.filter((c) => c.name !== colorName))
   }
 
-  // Function to assign images to a specific color
   const assignImagesToColor = (colorName: string, selectedImages: string[]) => {
     setColorOptions(colorOptions.map(color => 
       color.name === colorName 
-        ? { ...color, images: selectedImages }
+        ? { ...color, images: selectedImages.map(img => normalizeImagePath(img)) }
         : color
     ))
   }
 
-  // ✨ NEW: Function to handle pattern image upload.
   const handleColorImageUpload = async (file: File) => {
     if (!newColorName.trim()) {
         toast({
@@ -360,7 +377,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       setUploadingSizeGuide(true);
       const uploadedUrls = await productAPI.uploadImages([file]);
       if (uploadedUrls && uploadedUrls.length > 0) {
-        form.setValue("sizeGuideImage", uploadedUrls[0], { shouldValidate: true });
+        const normalizedUrl = normalizeImagePath(uploadedUrls[0]);
+        form.setValue("sizeGuideImage", normalizedUrl, { shouldValidate: true });
         toast({
           title: "Success",
           description: "Size guide image uploaded successfully.",
@@ -409,31 +427,40 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         return
       }
 
-      const ensureAbsolutePath = (path: string | null | undefined) => {
-        if (!path) return path;
-        return path.startsWith('/') ? path : `/${path}`;
+      // Prepare product data with normalized image paths
+      const productData = {
+        ...values,
+        basePrice: Number.parseFloat(values.basePrice),
+        discountPercentage: values.discountPercentage ? Number.parseFloat(values.discountPercentage) : undefined,
+        reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
+        sizeOptions,
+        colorOptions: colorOptions.map(color => ({
+          ...color,
+          value: color.type === 'image' ? normalizeImagePath(color.value) : color.value,
+          images: color.images?.map(img => normalizeImagePath(img))
+        })),
+        variants: variants.map(variant => ({
+          ...variant,
+          color: {
+            ...variant.color,
+            value: variant.color.type === 'image' ? normalizeImagePath(variant.color.value) : variant.color.value,
+            images: variant.color.images?.map(img => normalizeImagePath(img))
+          }
+        })),
+        defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
+        images: images.map(img => normalizeImagePath(img)),
+        highlightImage: values.isProductHighlight ? normalizeImagePath(values.highlightImage || "") : null,
+        sizeGuideImage: normalizeImagePath(values.sizeGuideImage || ""),
       }
 
-             const productData = {
-         ...values,
-         basePrice: Number.parseFloat(values.basePrice),
-         discountPercentage: values.discountPercentage ? Number.parseFloat(values.discountPercentage) : undefined,
-         reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
-         sizeOptions,
-         colorOptions: colorOptions.map(c => ({...c, value: ensureAbsolutePath(c.value) as string })),
-         variants,
-         defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
-         images: images.map(img => ensureAbsolutePath(img) as string),
-         highlightImage: values.isProductHighlight ? ensureAbsolutePath(values.highlightImage) : null,
-         sizeGuideImage: ensureAbsolutePath(values.sizeGuideImage) || "",
-       }
+      console.log('💾 Saving product data:', {
+        images: productData.images,
+        highlightImage: productData.highlightImage,
+        sizeGuideImage: productData.sizeGuideImage,
+        isUpdate: !!product
+      });
 
       if (product) {
-        console.log('🔍 Updating product with data:', {
-          images: productData.images,
-          highlightImage: productData.highlightImage,
-          originalImages: product.images
-        });
         await productAPI.updateProduct(product._id, productData)
         toast({
           title: "Success",
@@ -955,7 +982,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       <CardTitle>Color Options</CardTitle>
                       <CardDescription>Add available colors or patterns</CardDescription>
                     </CardHeader>
-                    {/* 🔧 MODIFIED: Fully updated CardContent for color options */}
                     <CardContent className="space-y-4">
                         <div className="flex items-center space-x-2">
                             <Button
@@ -1042,7 +1068,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   </Card>
                 </div>
 
-                {/* Color Image Assignment Section */}
                 {colorOptions.length > 0 && images.length > 0 && (
                   <Card className="mt-6">
                     <CardHeader>
