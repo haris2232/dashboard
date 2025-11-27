@@ -75,7 +75,7 @@ export function LoginForm() {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          {/* <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <p className="text-sm font-medium mb-2">Demo Credentials:</p>
             <div className="space-y-1 text-xs">
               <p>
@@ -88,7 +88,7 @@ export function LoginForm() {
                 <strong>Viewer:</strong> viewer@example.com / viewer123
               </p>
             </div>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>
