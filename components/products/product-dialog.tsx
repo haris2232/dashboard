@@ -153,7 +153,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       console.log('🔄 Loading product data:', {
         productImages: product.images,
         productHighlightImage: product.highlightImage,
-        productSizeGuideImage: product.sizeGuideImage
+        productSizeGuideImage: product.sizeGuideImage,
+        description: product.description,
+        purpose: product.purpose,
+        features: product.features,
+        materials: product.materials,
+        care: product.care
       });
 
       form.reset({
@@ -163,7 +168,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         category: product.category,
         subCategory: product.subCategory || "",
         discountPercentage: product.discountPercentage?.toString() || "",
-        description: product.description,
+        description: product.description || "",
         purpose: product.purpose || "",
         features: product.features || "",
         materials: product.materials || "",
@@ -458,6 +463,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         images: productData.images,
         highlightImage: productData.highlightImage,
         sizeGuideImage: productData.sizeGuideImage,
+        description: productData.description,
+        purpose: productData.purpose,
+        features: productData.features,
+        materials: productData.materials,
+        care: productData.care,
         isUpdate: !!product
       });
 
