@@ -233,7 +233,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     } else {
         setVariants([]);
     }
-  }, [sizeOptions, colorOptions, form.getValues("baseSku")])
+  }, [sizeOptions, colorOptions, form])
 
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
