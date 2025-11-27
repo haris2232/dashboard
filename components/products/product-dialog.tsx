@@ -69,6 +69,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const [subCategories, setSubCategories] = useState<any[]>([])
+  const [isFormInitialized, setIsFormInitialized] = useState(false)
   
   const getFullImageUrl = (url: string | undefined): string => {
     if (!url) {
@@ -148,85 +149,85 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     return () => subscription.unsubscribe()
   }, [form])
 
+  // FIXED: Proper form initialization with product data
   useEffect(() => {
-    if (product && open) {
-      console.log('🔄 Loading product data from API:', {
-        productImages: product.images,
-        productHighlightImage: product.highlightImage,
-        productSizeGuideImage: product.sizeGuideImage,
-        description: product.description,
-        purpose: product.purpose,
-        features: product.features,
-        materials: product.materials,
-        care: product.care,
-        'description type': typeof product.description,
-        'purpose type': typeof product.purpose,
-        'features type': typeof product.features,
-        'materials type': typeof product.materials,
-        'care type': typeof product.care
-      });
+    if (open) {
+      if (product) {
+        console.log('🔄 Loading product data for editing:', {
+          title: product.title,
+          purpose: product.purpose,
+          features: product.features,
+          materials: product.materials,
+          care: product.care,
+          description: product.description
+        });
 
-      // Explicitly set all field values to ensure they're loaded
-      const formValues = {
-        title: product.title || "",
-        basePrice: product.basePrice?.toString() || "",
-        baseSku: product.baseSku || "",
-        category: product.category || "",
-        subCategory: product.subCategory || "",
-        discountPercentage: product.discountPercentage?.toString() || "",
-        description: product.description || "",
-        purpose: product.purpose || "",
-        features: product.features || "",
-        materials: product.materials || "",
-        care: product.care || "",
-        reviewRating: product.reviewRating?.toString() || "5",
-        isActive: product.isActive !== undefined ? product.isActive : true,
-        isProductHighlight: product.isProductHighlight || false,
-        highlightImage: product.highlightImage || "",
-        sizeGuideImage: product.sizeGuideImage || "",
-      };
-      
-      console.log('🔄 Form reset values:', {
-        description: formValues.description,
-        purpose: formValues.purpose,
-        features: formValues.features,
-        materials: formValues.materials,
-        care: formValues.care
-      });
-      
-      form.reset(formValues);
+        // Use setTimeout to ensure form is ready before setting values
+        setTimeout(() => {
+          // Set all form values individually
+          form.setValue("title", product.title || "")
+          form.setValue("basePrice", product.basePrice?.toString() || "")
+          form.setValue("baseSku", product.baseSku || "")
+          form.setValue("category", product.category || "")
+          form.setValue("subCategory", product.subCategory || "")
+          form.setValue("discountPercentage", product.discountPercentage?.toString() || "")
+          form.setValue("description", product.description || "")
+          form.setValue("purpose", product.purpose || "")
+          form.setValue("features", product.features || "")
+          form.setValue("materials", product.materials || "")
+          form.setValue("care", product.care || "")
+          form.setValue("reviewRating", product.reviewRating?.toString() || "5")
+          form.setValue("isActive", product.isActive ?? true)
+          form.setValue("isProductHighlight", product.isProductHighlight || false)
+          form.setValue("highlightImage", product.highlightImage || "")
+          form.setValue("sizeGuideImage", product.sizeGuideImage || "")
 
-      // Load images - store them as they are from the API
-      setImages(product.images || [])
-      setSizeOptions(product.sizeOptions || [])
-      setColorOptions(product.colorOptions || [])
-      setVariants(product.variants || [])
-      setDefaultVariant(product.defaultVariant || "")
-    } else if (open) {
-      // Reset form for new product
-      form.reset({
-        title: "",
-        basePrice: "",
-        baseSku: generateUniqueSku(),
-        category: "",
-        subCategory: "",
-        discountPercentage: "",
-        description: "",
-        purpose: "",
-        features: "",
-        materials: "",
-        care: "",
-        reviewRating: "5",
-        isActive: true,
-        isProductHighlight: false,
-        highlightImage: "",
-        sizeGuideImage: "",
-      })
-      setImages([])
-      setSizeOptions([])
-      setColorOptions([])
-      setVariants([])
-      setDefaultVariant("")
+          console.log('✅ Form values set:', {
+            purpose: form.getValues("purpose"),
+            features: form.getValues("features"),
+            materials: form.getValues("materials"),
+            care: form.getValues("care")
+          })
+
+          setIsFormInitialized(true)
+        }, 100)
+
+        // Load other data
+        setImages(product.images || [])
+        setSizeOptions(product.sizeOptions || [])
+        setColorOptions(product.colorOptions || [])
+        setVariants(product.variants || [])
+        setDefaultVariant(product.defaultVariant || "")
+
+      } else {
+        // Reset form for new product
+        form.reset({
+          title: "",
+          basePrice: "",
+          baseSku: generateUniqueSku(),
+          category: "",
+          subCategory: "",
+          discountPercentage: "",
+          description: "",
+          purpose: "",
+          features: "",
+          materials: "",
+          care: "",
+          reviewRating: "5",
+          isActive: true,
+          isProductHighlight: false,
+          highlightImage: "",
+          sizeGuideImage: "",
+        })
+        setImages([])
+        setSizeOptions([])
+        setColorOptions([])
+        setVariants([])
+        setDefaultVariant("")
+        setIsFormInitialized(true)
+      }
+    } else {
+      setIsFormInitialized(false)
     }
   }, [product, form, open])
 
@@ -258,7 +259,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     } else {
         setVariants([]);
     }
-  }, [sizeOptions, colorOptions]) // form.getValues("baseSku") remove kiya
+  }, [sizeOptions, colorOptions])
 
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -493,14 +494,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       }
 
       console.log('💾 Saving product data:', {
-        images: productData.images,
-        highlightImage: productData.highlightImage,
-        sizeGuideImage: productData.sizeGuideImage,
-        description: productData.description,
         purpose: productData.purpose,
         features: productData.features,
         materials: productData.materials,
         care: productData.care,
+        description: productData.description,
         variants: productData.variants,
         isUpdate: !!product
       });
@@ -730,6 +728,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   )}
                 />
 
+                {/* FIXED: Textarea fields with proper value binding */}
                 <FormField
                     control={form.control}
                     name="description"
@@ -742,9 +741,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           rows={4} 
                           value={field.value || ""}
                           onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                         />
                         </FormControl>
                         <FormMessage />
@@ -764,9 +760,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           rows={3} 
                           value={field.value || ""}
                           onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                         />
                         </FormControl>
                         <FormMessage />
@@ -786,9 +779,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           rows={4} 
                           value={field.value || ""}
                           onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                         />
                         </FormControl>
                         <FormMessage />
@@ -808,9 +798,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           rows={3} 
                           value={field.value || ""}
                           onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                         />
                         </FormControl>
                         <FormMessage />
@@ -830,9 +817,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           rows={3} 
                           value={field.value || ""}
                           onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
                         />
                         </FormControl>
                         <FormMessage />
