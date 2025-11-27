@@ -719,7 +719,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                        <Textarea placeholder="Enter product description" rows={4} {...field} />
+                        <Textarea 
+                          placeholder="Enter product description" 
+                          rows={4} 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -733,7 +741,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Purpose</FormLabel>
                         <FormControl>
-                        <Textarea placeholder="e.g., High-intensity training, casual wear" rows={3} {...field} />
+                        <Textarea 
+                          placeholder="e.g., High-intensity training, casual wear" 
+                          rows={3} 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -747,7 +763,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Features & Fit</FormLabel>
                         <FormControl>
-                        <Textarea placeholder="e.g.,- Moisture-wicking fabric&#x0a;- Athletic fit" rows={4} {...field} />
+                        <Textarea 
+                          placeholder="e.g.,- Moisture-wicking fabric&#x0a;- Athletic fit" 
+                          rows={4} 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -761,7 +785,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Materials</FormLabel>
                         <FormControl>
-                        <Textarea placeholder="e.g., 88% Polyester, 12% Spandex" rows={3} {...field} />
+                        <Textarea 
+                          placeholder="e.g., 88% Polyester, 12% Spandex" 
+                          rows={3} 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -775,7 +807,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Care Instructions</FormLabel>
                         <FormControl>
-                        <Textarea placeholder="e.g., Machine wash cold, tumble dry low" rows={3} {...field} />
+                        <Textarea 
+                          placeholder="e.g., Machine wash cold, tumble dry low" 
+                          rows={3} 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
