@@ -214,6 +214,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     }
   }, [product, form, open])
 
+  // AUTO-GENERATE VARIANTS (BUT SKU MANUAL)
   useEffect(() => {
     if (sizeOptions.length > 0 && colorOptions.length > 0) {
       const newVariants: ProductVariant[] = []
@@ -221,14 +222,17 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         colorOptions.forEach((color) => {
           const existingVariant = variants.find((v) => v.size === size && v.color.name === color.name)
           if (existingVariant) {
+            // Existing variant - SKU change nahi karein
             newVariants.push(existingVariant)
           } else {
+            // New variant - EMPTY SKU rakhein (user manually daalega)
             newVariants.push({
               id: `variant-${size}-${color.name}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               size,
               color,
-              sku: `${form.getValues("baseSku") || "SKU"}-${size.toUpperCase()}-${color.name.substring(0, 3).toUpperCase()}`,
+              sku: "", // EMPTY SKU - USER MANually DAALEGA
               stock: 0,
+              priceOverride: Number.parseFloat(form.getValues("basePrice")) || 0,
               isActive: true,
             })
           }
@@ -238,7 +242,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     } else {
         setVariants([]);
     }
-  }, [sizeOptions, colorOptions, form.getValues("baseSku")])
+  }, [sizeOptions, colorOptions]) // form.getValues("baseSku") remove kiya
 
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -321,7 +325,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             {
                 name: newColorName,
                 type: colorInputType,
-                value: normalizeImagePath(value),
                 value: colorInputType === 'hex' ? value : normalizeImagePath(value),
             },
         ]);
@@ -408,6 +411,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     setVariants(variants.map((v) => (v.id === variantId ? { ...v, ...updates } : v)))
   }
 
+  const removeVariant = (variantId: string) => {
+    setVariants(variants.filter(v => v.id !== variantId))
+    if (defaultVariant === variantId) {
+      setDefaultVariant("")
+    }
+  }
+
   const validateForm = () => {
     const errors: string[] = []
     if (!form.getValues("title")) errors.push("Product title is required")
@@ -417,6 +427,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     if (images.length === 0) errors.push("At least one product image is required")
     if (sizeOptions.length === 0) errors.push("Please add at least one size option")
     if (colorOptions.length === 0) errors.push("Please add at least one color option")
+    
+    // Check if all variants have SKU
+    const variantsWithoutSku = variants.filter(v => !v.sku.trim())
+    if (variantsWithoutSku.length > 0) {
+      errors.push(`${variantsWithoutSku.length} variants are missing SKU`)
+    }
+    
     return errors
   }
 
@@ -468,6 +485,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         features: productData.features,
         materials: productData.materials,
         care: productData.care,
+        variants: productData.variants,
         isUpdate: !!product
       });
 
@@ -951,7 +969,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   <Card>
                     <CardHeader>
                       <CardTitle>Size Options</CardTitle>
-                      <CardDescription>Add available sizes</CardDescription>
+                      <CardDescription>Add available sizes - variants auto-generate honge</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex flex-wrap gap-2">
@@ -991,7 +1009,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   <Card>
                     <CardHeader>
                       <CardTitle>Color Options</CardTitle>
-                      <CardDescription>Add available colors or patterns</CardDescription>
+                      <CardDescription>Add available colors or patterns - variants auto-generate honge</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center space-x-2">
@@ -1153,7 +1171,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   <div>
                     <h3 className="text-lg font-medium">Product Variants</h3>
                     <p className="text-sm text-muted-foreground">
-                      Configure stock and SKU for each generated variant
+                      Variants auto-generate honge sizes aur colors ke basis par. SKU manually daalein.
                     </p>
                   </div>
                   <Badge variant="outline">{variants.length} variants</Badge>
@@ -1178,8 +1196,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                               </Button>
                             </div>
 
-                            <div className="col-span-3">
-                              <div className="font-medium text-sm">{variant.size} / {variant.color?.name || 'N/A'}</div>
+                            <div className="col-span-2">
+                              <div className="font-medium text-sm">{variant.size}</div>
                               <div className="flex items-center space-x-1 mt-1">
                                 {variant.color.type === "hex" ? (
                                   <div
@@ -1198,13 +1216,16 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             </div>
 
                             <div className="col-span-2">
-                                <FormLabel className="text-xs">SKU</FormLabel>
+                                <FormLabel className="text-xs">SKU *</FormLabel>
                                 <Input
-                                    placeholder="SKU"
+                                    placeholder="Enter SKU manually"
                                     value={variant.sku}
                                     onChange={(e) => updateVariant(variant.id, { sku: e.target.value })}
                                     className="text-sm h-9"
                                 />
+                                {!variant.sku.trim() && (
+                                  <p className="text-xs text-destructive mt-1">SKU required</p>
+                                )}
                             </div>
 
                             <div className="col-span-2">
@@ -1243,9 +1264,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             </div>
                             
                             <div className="col-span-1 text-right">
-                                <div className="text-xs text-muted-foreground">
-                                {variant.isActive ? "Active" : "Inactive"}
-                                </div>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => removeVariant(variant.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
 
                           </div>
@@ -1259,7 +1286,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                       <div className="text-muted-foreground">
                         <div className="text-lg mb-2">No variants to display</div>
                         <p className="text-sm">
-                          Add sizes and colors in the previous tab to generate variants.
+                          Add sizes and colors in the Media tab to auto-generate variants.
                         </p>
                       </div>
                     </CardContent>
