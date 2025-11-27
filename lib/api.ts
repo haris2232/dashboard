@@ -50,12 +50,19 @@ export interface Product {
   category: string
   subCategory?: string
   collectionType?: "men" | "women" | "train" | "general"
-  description: string
+  description?: string
+  purpose?: string
+  features?: string
+  materials?: string
+  care?: string
+  reviewRating?: number
+  reviewCount?: number
   discountPercentage?: number
   images: string[]
   highlightImage?: string
   sizeGuideImage?: string
   isActive: boolean
+  isProductHighlight?: boolean
   createdAt: string
   // Variation options
   sizeOptions: string[]
