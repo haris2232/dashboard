@@ -625,27 +625,36 @@ export function BundlesPage() {
   }
 
   const generateVariations = () => {
+    const existingVariationsMap = new Map<string, VariationOption>()
+    variations.forEach(v => {
+      const key = `${v.pack}|${v.color}|${v.size}`
+      existingVariationsMap.set(key, v)
+    })
+
     const newVariations: VariationOption[] = []
-    
+
     packOptions.forEach(pack => {
       colorOptions.forEach(color => {
         sizeOptions.forEach(size => {
           const basePrice = Number(form.getValues('bundlePrice')) || 0
           const sizeAdjustment = sizePriceVariation[size] || 0
-          
+          const price = basePrice + sizeAdjustment
+          const key = `${pack.name}|${color.name}|${size}`
+          const existingVariation = existingVariationsMap.get(key)
+
           newVariations.push({
-            id: createId(),
+            id: existingVariation?.id || createId(),
             pack: pack.name,
             color: color.name,
             size: size,
-            sku: `${pack.name.substring(0,3)}-${color.name.substring(0,3)}-${size}`.toUpperCase(),
-            price: basePrice + sizeAdjustment,
-            stock: 0
+            sku: existingVariation?.sku || `${pack.name.substring(0, 3)}-${color.name.substring(0, 3)}-${size}`.toUpperCase(),
+            price: price,
+            stock: existingVariation?.stock || 0,
           })
         })
       })
     })
-    
+
     setVariations(newVariations)
   }
 
