@@ -619,7 +619,7 @@ function OrderDetailsDialog({ order, open, onClose, onTrackingAssign }: OrderDet
                         </div>
                       )}
                       <div className="text-sm text-muted-foreground">
-                        SKU: {item.variant?.sku || item.product?.baseSku || 'N/A'}
+                        SKU: {item.bundleDetails?.sku || item.variant?.sku || item.product?.baseSku || 'N/A'}
                       </div>
                     </div>
                     <div className="text-right">
