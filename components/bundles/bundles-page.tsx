@@ -591,6 +591,22 @@ export function BundlesPage() {
           icon: item.icon || "",
         }))
       )
+      // Load variations if they exist
+      if (bundle.variations && Array.isArray(bundle.variations) && bundle.variations.length > 0) {
+        setVariations(
+          bundle.variations.map((variation: any) => ({
+            id: createId(),
+            pack: variation.pack || "",
+            color: variation.color || "",
+            size: variation.size || "",
+            sku: variation.sku || "",
+            price: variation.price || 0,
+            stock: variation.stock || 0,
+          }))
+        )
+      } else {
+        setVariations([])
+      }
     } else {
       setEditingBundle(null)
       form.reset()
@@ -602,6 +618,7 @@ export function BundlesPage() {
       setSizePriceVariation({})
       setLengthOptions([])
       setGuarantees([])
+      setVariations([])
     }
     setNewSizeValue("")
     setNewLengthValue("")
@@ -620,6 +637,7 @@ export function BundlesPage() {
     setSizePriceVariation({})
     setLengthOptions([])
     setGuarantees([])
+    setVariations([])
     setNewSizeValue("")
     setNewLengthValue("")
   }
@@ -724,6 +742,16 @@ export function BundlesPage() {
           icon: icon?.trim() || undefined,
         }))
 
+      // Prepare variations payload (remove id field before sending)
+      const variationsPayload = variations.map(({ id, ...variation }) => ({
+        pack: variation.pack,
+        color: variation.color,
+        size: variation.size,
+        sku: variation.sku,
+        price: Number(variation.price),
+        stock: Number(variation.stock),
+      }))
+
       const bundleData: any = {
         ...values,
         bundlePrice: bundlePriceNumeric,
@@ -736,6 +764,7 @@ export function BundlesPage() {
         sizePriceVariation: sizePricePayload,
         lengthOptions,
         guarantees: guaranteesPayload,
+        variations: variationsPayload,
         ratingValue,
         reviewsCount,
         basePrice,
@@ -1817,16 +1846,9 @@ export function BundlesPage() {
               </Button>
               <Button 
                 onClick={() => {
-                  if (activeTab === 'details') {
-                    form.handleSubmit(onSubmit)()
-                  } else {
-                    // Save variations along with the form data
-                    const formData = form.getValues()
-                    onSubmit({
-                      ...formData,
-                      variations: variations
-                    })
-                  }
+                  // Always use form.handleSubmit to trigger validation and onSubmit
+                  // Variations are already in state and will be included in onSubmit
+                  form.handleSubmit(onSubmit)()
                 }}
               >
                 {editingBundle ? "Update Bundle" : "Create Bundle"}

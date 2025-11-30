@@ -212,6 +212,14 @@ export interface Bundle {
   sizePriceVariation?: Record<string, number>
   lengthOptions?: string[]
   guarantees?: BundleGuarantee[]
+  variations?: Array<{
+    pack: string
+    color: string
+    size: string
+    sku: string
+    price: number
+    stock: number
+  }>
   products?: any[]
   originalPrice?: number
   bundlePrice?: number
