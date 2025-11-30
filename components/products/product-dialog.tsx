@@ -150,7 +150,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
   useEffect(() => {
     if (product && open) {
-      console.log('🔄 Loading product data from API:', {
+      console.log('🔄 Loading product data:', {
         productImages: product.images,
         productHighlightImage: product.highlightImage,
         productSizeGuideImage: product.sizeGuideImage,
@@ -158,20 +158,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         purpose: product.purpose,
         features: product.features,
         materials: product.materials,
-        care: product.care,
-        'description type': typeof product.description,
-        'purpose type': typeof product.purpose,
-        'features type': typeof product.features,
-        'materials type': typeof product.materials,
-        'care type': typeof product.care
+        care: product.care
       });
 
-      // Explicitly set all field values to ensure they're loaded
-      const formValues = {
-        title: product.title || "",
-        basePrice: product.basePrice?.toString() || "",
-        baseSku: product.baseSku || "",
-        category: product.category || "",
+      form.reset({
+        title: product.title,
+        basePrice: product.basePrice.toString(),
+        baseSku: product.baseSku,
+        category: product.category,
         subCategory: product.subCategory || "",
         discountPercentage: product.discountPercentage?.toString() || "",
         description: product.description || "",
@@ -180,21 +174,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         materials: product.materials || "",
         care: product.care || "",
         reviewRating: product.reviewRating?.toString() || "5",
-        isActive: product.isActive !== undefined ? product.isActive : true,
+        isActive: product.isActive,
         isProductHighlight: product.isProductHighlight || false,
         highlightImage: product.highlightImage || "",
         sizeGuideImage: product.sizeGuideImage || "",
-      };
-      
-      console.log('🔄 Form reset values:', {
-        description: formValues.description,
-        purpose: formValues.purpose,
-        features: formValues.features,
-        materials: formValues.materials,
-        care: formValues.care
-      });
-      
-      form.reset(formValues);
+      })
 
       // Load images - store them as they are from the API
       setImages(product.images || [])
@@ -737,15 +721,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                        <Textarea 
-                          placeholder="Enter product description" 
-                          rows={4} 
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
+                        <Textarea placeholder="Enter product description" rows={4} {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -759,15 +735,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Purpose</FormLabel>
                         <FormControl>
-                        <Textarea 
-                          placeholder="e.g., High-intensity training, casual wear" 
-                          rows={3} 
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
+                        <Textarea placeholder="e.g., High-intensity training, casual wear" rows={3} {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -781,15 +749,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Features & Fit</FormLabel>
                         <FormControl>
-                        <Textarea 
-                          placeholder="e.g.,- Moisture-wicking fabric&#x0a;- Athletic fit" 
-                          rows={4} 
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
+                        <Textarea placeholder="e.g.,- Moisture-wicking fabric&#x0a;- Athletic fit" rows={4} {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -803,15 +763,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Materials</FormLabel>
                         <FormControl>
-                        <Textarea 
-                          placeholder="e.g., 88% Polyester, 12% Spandex" 
-                          rows={3} 
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
+                        <Textarea placeholder="e.g., 88% Polyester, 12% Spandex" rows={3} {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -825,15 +777,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     <FormItem>
                         <FormLabel>Care Instructions</FormLabel>
                         <FormControl>
-                        <Textarea 
-                          placeholder="e.g., Machine wash cold, tumble dry low" 
-                          rows={3} 
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
+                        <Textarea placeholder="e.g., Machine wash cold, tumble dry low" rows={3} {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
