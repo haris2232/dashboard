@@ -46,7 +46,6 @@ const bundleSchema = z.object({
   featuresAndFit: z.string().optional(),
   materialAndCare: z.string().optional(),
   care: z.string().optional(),
-  variations: z.any().optional(), // Allow variations to be passed
 })
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://athlekt.com/backendnew/api"
@@ -172,7 +171,6 @@ export function BundlesPage() {
       featuresAndFit: "",
       materialAndCare: "",
       care: "",
-      variations: [],
     },
   })
 
@@ -531,7 +529,6 @@ export function BundlesPage() {
       setEditingBundle(bundle)
       form.reset({
         name: bundle.name,
-        variations: bundle.variations || [],
         productSlug: bundle.productSlug || "",
         description: bundle.description || "",
         shortDescription: bundle.shortDescription || "",
@@ -594,7 +591,6 @@ export function BundlesPage() {
           icon: item.icon || "",
         }))
       )
-      setVariations(bundle.variations || [])
     } else {
       setEditingBundle(null)
       form.reset()
@@ -606,7 +602,6 @@ export function BundlesPage() {
       setSizePriceVariation({})
       setLengthOptions([])
       setGuarantees([])
-      setVariations([])
     }
     setNewSizeValue("")
     setNewLengthValue("")
@@ -625,7 +620,6 @@ export function BundlesPage() {
     setSizePriceVariation({})
     setLengthOptions([])
     setGuarantees([])
-    setVariations([])
     setNewSizeValue("")
     setNewLengthValue("")
   }
@@ -755,7 +749,6 @@ export function BundlesPage() {
         featuresAndFit: values.featuresAndFit?.trim() || undefined,
         materialAndCare: values.materialAndCare?.trim() || undefined,
         care: values.care?.trim() || undefined,
-        variations: variations,
       }
 
       bundleData.productSlug = values.productSlug?.trim() || undefined
@@ -1826,7 +1819,14 @@ export function BundlesPage() {
                 onClick={() => {
                   if (activeTab === 'details') {
                     form.handleSubmit(onSubmit)()
-                  } else { form.handleSubmit(onSubmit)() }
+                  } else {
+                    // Save variations along with the form data
+                    const formData = form.getValues()
+                    onSubmit({
+                      ...formData,
+                      variations: variations
+                    })
+                  }
                 }}
               >
                 {editingBundle ? "Update Bundle" : "Create Bundle"}
