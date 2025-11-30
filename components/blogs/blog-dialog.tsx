@@ -9,10 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { blogAPI, type Blog } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Image as ImageIcon, Bold, Italic, Link, Quote, List, ListOrdered, Heading1, Heading2, Heading3, Code, Minus } from "lucide-react"
+import { Loader2, Image as ImageIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://athlekt.com/backendnew/api"
 
@@ -26,133 +24,31 @@ const getFullImageUrl = (url: string | undefined): string => {
   return `${API_BASE_URL}${url.startsWith("/") ? url : `/${url}`}`
 }
 
-type FormatAction = {
+type QuickTag = {
   label: string
-  icon: React.ReactNode
-  action: (textarea: HTMLTextAreaElement) => void
+  open: string
+  close?: string
+  placeholder?: string
+  selfClosing?: boolean
+  cursorOffset?: number
 }
 
-const FORMAT_ACTIONS: FormatAction[] = [
-  {
-    label: "Bold",
-    icon: <Bold className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const newValue = value.slice(0, selectionStart) + `<strong>${selectedText}</strong>` + value.slice(selectionEnd)
-      textarea.value = newValue
-      textarea.focus()
-      textarea.setSelectionRange(selectionStart + 8, selectionEnd + 8)
-    }
-  },
-  {
-    label: "Italic",
-    icon: <Italic className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const newValue = value.slice(0, selectionStart) + `<em>${selectedText}</em>` + value.slice(selectionEnd)
-      textarea.value = newValue
-      textarea.focus()
-      textarea.setSelectionRange(selectionStart + 3, selectionEnd + 3)
-    }
-  },
-  {
-    label: "Link",
-    icon: <Link className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const url = prompt("Enter URL:", "https://")
-      if (url) {
-        const newValue = value.slice(0, selectionStart) + `<a href="${url}">${selectedText || "Link"}</a>` + value.slice(selectionEnd)
-        textarea.value = newValue
-        textarea.focus()
-        if (selectedText) {
-          textarea.setSelectionRange(selectionStart + 9 + url.length, selectionEnd + 9 + url.length)
-        } else {
-          textarea.setSelectionRange(selectionStart + 9 + url.length + 4, selectionStart + 9 + url.length + 8)
-        }
-      }
-    }
-  },
-  {
-    label: "Quote",
-    icon: <Quote className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const newValue = value.slice(0, selectionStart) + `<blockquote>${selectedText}</blockquote>` + value.slice(selectionEnd)
-      textarea.value = newValue
-      textarea.focus()
-      textarea.setSelectionRange(selectionStart + 15, selectionEnd + 15)
-    }
-  },
-  {
-    label: "Unordered List",
-    icon: <List className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const lines = selectedText.split('\n').filter(line => line.trim())
-      
-      if (lines.length === 0) {
-        const newValue = value.slice(0, selectionStart) + `<ul>\n  <li>List item</li>\n</ul>` + value.slice(selectionEnd)
-        textarea.value = newValue
-        textarea.focus()
-        textarea.setSelectionRange(selectionStart + 9, selectionStart + 18)
-      } else {
-        const listItems = lines.map(line => `  <li>${line}</li>`).join('\n')
-        const newValue = value.slice(0, selectionStart) + `<ul>\n${listItems}\n</ul>` + value.slice(selectionEnd)
-        textarea.value = newValue
-        textarea.focus()
-      }
-    }
-  },
-  {
-    label: "Ordered List",
-    icon: <ListOrdered className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const lines = selectedText.split('\n').filter(line => line.trim())
-      
-      if (lines.length === 0) {
-        const newValue = value.slice(0, selectionStart) + `<ol>\n  <li>List item</li>\n</ol>` + value.slice(selectionEnd)
-        textarea.value = newValue
-        textarea.focus()
-        textarea.setSelectionRange(selectionStart + 9, selectionStart + 18)
-      } else {
-        const listItems = lines.map(line => `  <li>${line}</li>`).join('\n')
-        const newValue = value.slice(0, selectionStart) + `<ol>\n${listItems}\n</ol>` + value.slice(selectionEnd)
-        textarea.value = newValue
-        textarea.focus()
-      }
-    }
-  },
-  {
-    label: "Code",
-    icon: <Code className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, selectionEnd, value } = textarea
-      const selectedText = value.substring(selectionStart, selectionEnd)
-      const newValue = value.slice(0, selectionStart) + `<code>${selectedText}</code>` + value.slice(selectionEnd)
-      textarea.value = newValue
-      textarea.focus()
-      textarea.setSelectionRange(selectionStart + 6, selectionEnd + 6)
-    }
-  },
-  {
-    label: "Horizontal Line",
-    icon: <Minus className="h-4 w-4" />,
-    action: (textarea) => {
-      const { selectionStart, value } = textarea
-      const newValue = value.slice(0, selectionStart) + `<hr />` + value.slice(selectionStart)
-      textarea.value = newValue
-      textarea.focus()
-      textarea.setSelectionRange(selectionStart + 6, selectionStart + 6)
-    }
-  }
+const QUICK_TAGS: QuickTag[] = [
+  { label: "H1", open: "<h1>", close: "</h1>", placeholder: "Heading text" },
+  { label: "H2", open: "<h2>", close: "</h2>", placeholder: "Heading text" },
+  { label: "H3", open: "<h3>", close: "</h3>", placeholder: "Heading text" },
+  { label: "b", open: "<strong>", close: "</strong>", placeholder: "bold text" },
+  { label: "i", open: "<em>", close: "</em>", placeholder: "italic text" },
+  { label: "link", open: "<a href=\"\">", close: "</a>", placeholder: "link text", cursorOffset: 9 },
+  { label: "b-quote", open: "<blockquote>", close: "</blockquote>", placeholder: "blockquote" },
+  { label: "del", open: "<del>", close: "</del>", placeholder: "deleted text" },
+  { label: "ins", open: "<ins>", close: "</ins>", placeholder: "inserted text" },
+  { label: "img", open: "<img src=\"", close: "\" alt=\"\" />", selfClosing: true, cursorOffset: 10 },
+  { label: "ul", open: "<ul>\n  <li>", close: "</li>\n</ul>", placeholder: "List item" },
+  { label: "ol", open: "<ol>\n  <li>", close: "</li>\n</ol>", placeholder: "List item" },
+  { label: "li", open: "<li>", close: "</li>", placeholder: "List item" },
+  { label: "code", open: "<code>", close: "</code>", placeholder: "code snippet" },
+  { label: "more", open: "<!--more-->", selfClosing: true },
 ]
 
 interface BlogDialogProps {
@@ -170,7 +66,7 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
   const [isActive, setIsActive] = useState(true)
   const [coverImage, setCoverImage] = useState("")
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [headingLevel, setHeadingLevel] = useState("")
+  const [openTagStack, setOpenTagStack] = useState<string[]>([])
   const { toast } = useToast()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -232,50 +128,70 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
     return `/blog/${slug}`
   }
 
-  const handleFormatAction = (action: FormatAction) => {
+  const insertTag = (tag: QuickTag) => {
     const textarea = textareaRef.current
     if (!textarea) return
-    
-    action.action(textarea)
-    setContent(textarea.value)
-  }
 
-  const handleHeadingChange = (level: string) => {
-    const textarea = textareaRef.current
-    if (!textarea || !level) return
-    
     const { selectionStart, selectionEnd, value } = textarea
     const selectedText = value.substring(selectionStart, selectionEnd)
-    
-    const newValue = value.slice(0, selectionStart) + `<h${level}>${selectedText}</h${level}>` + value.slice(selectionEnd)
-    textarea.value = newValue
-    setContent(newValue)
-    textarea.focus()
-    
-    if (selectedText) {
-      textarea.setSelectionRange(selectionStart + 3 + level.length, selectionEnd + 3 + level.length)
-    } else {
-      textarea.setSelectionRange(selectionStart + 3 + level.length, selectionStart + 3 + level.length)
+
+    if (tag.selfClosing) {
+      const insertText = `${tag.open}${tag.close ?? ""}`
+      const newValue = value.slice(0, selectionStart) + insertText + value.slice(selectionEnd)
+      setContent(newValue)
+
+      const caretBase = selectionStart + (tag.cursorOffset ?? tag.open.length)
+      window.requestAnimationFrame(() => {
+        textarea.focus()
+        textarea.setSelectionRange(caretBase, caretBase)
+      })
+      return
     }
-    
-    setHeadingLevel("")
+
+    if (selectedText.length > 0) {
+      const insertText = `${tag.open}${selectedText}${tag.close ?? ""}`
+      const newValue = value.slice(0, selectionStart) + insertText + value.slice(selectionEnd)
+      setContent(newValue)
+
+      const caretPos = selectionStart + tag.open.length + selectedText.length + (tag.close ? 0 : 0)
+      window.requestAnimationFrame(() => {
+        textarea.focus()
+        textarea.setSelectionRange(caretPos, caretPos)
+      })
+      return
+    }
+
+    const newValue = value.slice(0, selectionStart) + tag.open + value.slice(selectionEnd)
+    setContent(newValue)
+
+    if (tag.close) {
+      setOpenTagStack((prev) => [...prev, tag.close as string])
+    }
+
+    const caretOffset = tag.cursorOffset ?? tag.open.length
+    const caretPos = selectionStart + caretOffset
+
+    window.requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(caretPos, caretPos)
+    })
   }
 
-  const handleImageInsert = () => {
+  const handleCloseTags = () => {
     const textarea = textareaRef.current
-    if (!textarea) return
-    
-    const url = prompt("Enter image URL:", "https://")
-    if (url) {
-      const alt = prompt("Enter image description (alt text):", "")
-      const { selectionStart, value } = textarea
-      const imgTag = `<img src="${url}" alt="${alt || ''}" />`
-      const newValue = value.slice(0, selectionStart) + imgTag + value.slice(selectionStart)
-      textarea.value = newValue
-      setContent(newValue)
+    if (!textarea || openTagStack.length === 0) return
+
+    const { selectionStart, selectionEnd, value } = textarea
+    const closingText = openTagStack.slice().reverse().join("")
+    const newValue = value.slice(0, selectionStart) + closingText + value.slice(selectionEnd)
+    setContent(newValue)
+    setOpenTagStack([])
+
+    const caretPos = selectionStart + closingText.length
+    window.requestAnimationFrame(() => {
       textarea.focus()
-      textarea.setSelectionRange(selectionStart + imgTag.length, selectionStart + imgTag.length)
-    }
+      textarea.setSelectionRange(caretPos, caretPos)
+    })
   }
 
   const handleImageUpload = async (file: File) => {
@@ -368,7 +284,7 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{blog ? "Edit Blog" : "Create New Blog"}</DialogTitle>
           <DialogDescription>
@@ -413,61 +329,39 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="content">Content *</Label>
-            <div className="border rounded-md overflow-hidden">
-              {/* Formatting Toolbar */}
-              <div className="flex flex-wrap items-center gap-1 p-2 bg-muted/50 border-b">
-                {/* Heading Selector */}
-                <Select value={headingLevel} onValueChange={handleHeadingChange}>
-                  <SelectTrigger className="w-[100px] h-8">
-                    <SelectValue placeholder="Heading" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Heading 1</SelectItem>
-                    <SelectItem value="2">Heading 2</SelectItem>
-                    <SelectItem value="3">Heading 3</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {/* Formatting Buttons */}
-                <ToggleGroup type="multiple" className="flex flex-wrap gap-1">
-                  {FORMAT_ACTIONS.map((action) => (
-                    <ToggleGroupItem
-                      key={action.label}
-                      value={action.label}
-                      aria-label={action.label}
-                      onClick={() => handleFormatAction(action)}
-                      className="h-8 w-8 p-0"
-                    >
-                      {action.icon}
-                    </ToggleGroupItem>
-                  ))}
-                  
-                  {/* Image Insert Button */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={handleImageInsert}
-                  >
-                    <ImageIcon className="h-4 w-4" />
-                  </Button>
-                </ToggleGroup>
-              </div>
-              
-              {/* Content Textarea */}
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Write your blog content here..."
-                className="min-h-[300px] border-0 focus-visible:ring-0"
-                ref={textareaRef}
-                required
-              />
+            <div className="flex flex-wrap gap-2">
+              {QUICK_TAGS.map((tag) => (
+                <Button
+                  key={tag.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => insertTag(tag)}
+                >
+                  {tag.label}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCloseTags}
+                disabled={openTagStack.length === 0}
+              >
+                close tags
+              </Button>
             </div>
+            <Textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Enter blog content..."
+              className="min-h-[300px]"
+              ref={textareaRef}
+              required
+            />
             <p className="text-xs text-muted-foreground">
-              Use the toolbar above to format your content without needing to know HTML
+              This is the main content of your blog post
             </p>
           </div>
 
@@ -563,3 +457,4 @@ export function BlogDialog({ open, onClose, blog }: BlogDialogProps) {
     </Dialog>
   )
 }
+
