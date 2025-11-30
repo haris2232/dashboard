@@ -344,7 +344,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       return;
     }
 
-    let colorValue: string;
+    let colorValue = "";
 
     if (colorInputType === "hex") {
       colorValue = newColorValue;
@@ -363,13 +363,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
     // Normalize the value for storage
     const normalizedValue = normalizeImagePath(colorValue);
-    // Only normalize the value if it's an image path
-    const finalValue = colorInputType === 'image' ? normalizeImagePath(colorValue) : colorValue;
 
     const newColor = {
       name: newColorName.trim(),
       type: colorInputType,
-      value: finalValue,
+      value: normalizedValue,
       images: [],
     };
 
@@ -506,16 +504,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
         sizeOptions,
         colorOptions: colorOptions.map(color => ({
-            ...color,
-            // Only normalize image types on save
-            value: color.type === 'image' ? normalizeImagePath(color.value) : color.value,
-            images: color.images?.map(img => normalizeImagePath(img))
+          ...color,
+          value: normalizeImagePath(color.value),
+          images: color.images?.map(img => normalizeImagePath(img))
         })),
         variants: variants.map(variant => ({
           ...variant,
           color: {
             ...variant.color,
-            value: variant.color.type === 'image' ? normalizeImagePath(variant.color.value) : variant.color.value,
+            value: normalizeImagePath(variant.color.value),
             images: variant.color.images?.map(img => normalizeImagePath(img))
           }
         })),
