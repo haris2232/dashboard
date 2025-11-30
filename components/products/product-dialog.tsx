@@ -338,11 +338,13 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   }
 
   const assignImagesToColor = (colorName: string, selectedImages: string[]) => {
-    setColorOptions(colorOptions.map(color => 
-      color.name === colorName 
-        ? { ...color, images: selectedImages.map(img => normalizeImagePath(img)) }
-        : color
-    ))
+    setColorOptions(prevColorOptions => 
+      prevColorOptions.map(color => 
+        color.name === colorName 
+          ? { ...color, images: selectedImages.map(img => normalizeImagePath(img)) }
+          : color
+      )
+    )
   }
 
   const handleColorImageUpload = async (file: File) => {
@@ -1126,7 +1128,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                           
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {images.map((image, index) => {
-                              const isSelected = color.images?.includes(image) || false
+                              const normalizedImage = normalizeImagePath(image);
+                              const isSelected = color.images?.some(img => normalizeImagePath(img) === normalizedImage) || false
                               return (
                                 <div
                                   key={index}
@@ -1137,8 +1140,9 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                                   }`}
                                   onClick={() => {
                                     const currentImages = color.images || [];
+                                    const normalizedCurrentImages = currentImages.map(img => normalizeImagePath(img));
                                     const newImages = isSelected
-                                      ? currentImages.filter(img => img !== image)
+                                      ? currentImages.filter(img => normalizeImagePath(img) !== normalizedImage)
                                       : [...currentImages, image];
                                     assignImagesToColor(color.name, newImages);
                                   }}
