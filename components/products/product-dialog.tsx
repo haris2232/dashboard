@@ -324,63 +324,30 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     setSizeOptions(sizeOptions.filter((s) => s !== size))
   }
 
-  // FIXED: addColor function - properly handle both hex and image types
   const addColor = (imageUrl?: string) => {
-    if (!newColorName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a color/pattern name",
-        variant: "destructive",
-      });
-      return;
+    if (newColorName && !colorOptions.find((c) => c.name === newColorName)) {
+        const value = colorInputType === 'image' ? imageUrl : newColorValue;
+
+        if (!value) {
+            toast({
+                title: "Error",
+                description: "Could not add color option. Value is missing.",
+                variant: "destructive"
+            });
+            return;
+        }
+        
+        setColorOptions([
+            ...colorOptions,
+            {
+                name: newColorName,
+                type: colorInputType,
+                value: colorInputType === 'hex' ? value : normalizeImagePath(value),
+            },
+        ]);
+        setNewColorName("");
+        setNewColorValue("#000000");
     }
-
-    if (colorOptions.find((c) => c.name === newColorName)) {
-      toast({
-        title: "Validation Error",
-        description: "Color/pattern with this name already exists",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    let colorValue = "";
-
-    if (colorInputType === "hex") {
-      colorValue = newColorValue;
-    } else if (colorInputType === "image" && imageUrl) {
-      colorValue = imageUrl;
-    } else {
-      toast({
-        title: "Validation Error",
-        description: colorInputType === "image" 
-          ? "Please upload an image for the pattern" 
-          : "Color value is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Normalize the value for storage
-    const normalizedValue = normalizeImagePath(colorValue);
-
-    const newColor = {
-      name: newColorName.trim(),
-      type: colorInputType,
-      value: normalizedValue,
-      images: [],
-    };
-
-    setColorOptions(prev => [...prev, newColor]);
-    
-    // Reset form
-    setNewColorName("");
-    setNewColorValue("#000000");
-    
-    toast({
-      title: "Success",
-      description: `${colorInputType === "hex" ? "Color" : "Pattern"} added successfully`,
-    });
   };
 
   const removeColor = (colorName: string) => {
@@ -411,6 +378,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         
         if (uploadedUrls && uploadedUrls.length > 0) {
             addColor(uploadedUrls[0]);
+            toast({
+                title: "Success",
+                description: "Pattern image uploaded and added successfully.",
+            });
         } else {
             throw new Error("API did not return a URL for the uploaded image.");
         }
@@ -529,7 +500,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         care: productData.care,
         description: productData.description,
         variants: productData.variants,
-        colorOptions: productData.colorOptions, // Debug color options
         isUpdate: !!product
       });
 
@@ -1039,7 +1009,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   <Card>
                     <CardHeader>
                       <CardTitle>Size Options</CardTitle>
-                      <CardDescription>Add available sizes - variants auto-generated</CardDescription>
+                      <CardDescription>Add available sizes - variants auto-generate honge</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex flex-wrap gap-2">
@@ -1079,7 +1049,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   <Card>
                     <CardHeader>
                       <CardTitle>Color Options</CardTitle>
-                      <CardDescription>Add available colors or patterns - variants auto-generated</CardDescription>
+                      <CardDescription>Add available colors or patterns - variants auto-generate honge</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center space-x-2">
@@ -1110,42 +1080,31 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             />
                             <div className="flex space-x-2">
                                 {colorInputType === "hex" ? (
-                                    <>
-                                        <Input
-                                            type="color"
-                                            value={newColorValue}
-                                            onChange={(e) => setNewColorValue(e.target.value)}
-                                            className="w-20 p-1"
-                                        />
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => addColor()}
-                                            disabled={!newColorName.trim()}
-                                        >
-                                            <Plus className="h-4 w-4" /> Add
-                                        </Button>
-                                    </>
+                                    <Input
+                                        type="color"
+                                        value={newColorValue}
+                                        onChange={(e) => setNewColorValue(e.target.value)}
+                                        className="w-20 p-1"
+                                    />
                                 ) : (
-                                    <>
-                                        <Input
-                                            type="file"
-                                            accept="image/*"
-                                            className="flex-1"
-                                            disabled={uploadingColorImage}
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    handleColorImageUpload(file);
-                                                }
-                                                e.target.value = '';
-                                            }}
-                                        />
-                                        {uploadingColorImage && (
-                                            <Button type="button" disabled>
-                                                Uploading...
-                                            </Button>
-                                        )}
-                                    </>
+                                    <Input
+                                        type="file"
+                                        accept="image/*"
+                                        className="flex-1"
+                                        disabled={uploadingColorImage}
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                handleColorImageUpload(file);
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                )}
+                                {colorInputType === 'hex' && (
+                                    <Button type="button" onClick={() => addColor()}>
+                                        <Plus className="h-4 w-4" /> Add
+                                    </Button>
                                 )}
                             </div>
                         </div>
@@ -1155,10 +1114,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             colorOptions.map((color) => (
                                 <Badge key={color.name} variant="secondary" className="flex items-center gap-2 p-1.5">
                                 {color.type === "hex" ? (
-                                    <div 
-                                        className="w-4 h-4 rounded-full border" 
-                                        style={{ backgroundColor: color.value }} 
-                                    />
+                                    <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: color.value }} />
                                 ) : (
                                     <img
                                     src={getFullImageUrl(color.value)}
@@ -1255,7 +1211,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   <div>
                     <h3 className="text-lg font-medium">Product Variants</h3>
                     <p className="text-sm text-muted-foreground">
-                      
+                      Variants auto-generate honge sizes aur colors ke basis par. SKU manually daalein.
                     </p>
                   </div>
                   <Badge variant="outline">{variants.length} variants</Badge>

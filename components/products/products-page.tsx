@@ -302,7 +302,7 @@ export function ProductsPage() {
                               />
                             ) : (
                               <img
-                                src={color.value.startsWith('http') ? color.value : `https://athlekt.com/backendnew${color.value}`}
+                                src={color.value.startsWith('http') ? color.value : `http://localhost:5000${color.value}`}
                                 alt={color.name}
                                 className="w-4 h-4 rounded-full border border-gray-300 object-cover"
                                 title={color.name}
