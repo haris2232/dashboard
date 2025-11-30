@@ -659,6 +659,7 @@ export function BundlesPage() {
   }
 
   const onSubmit = async (values: z.infer<typeof bundleSchema>) => {
+  const onSubmit = async (values: z.infer<typeof bundleSchema>, variationsData: VariationOption[] = variations) => {
     try {
       const sanitizedGallery = galleryImages.filter((url) => typeof url === "string" && url.trim().length > 0)
       const heroImageValue = heroImage?.trim() || undefined
@@ -735,6 +736,7 @@ export function BundlesPage() {
         sizeOptions,
         sizePriceVariation: sizePricePayload,
         lengthOptions,
+        variations: variationsData,
         guarantees: guaranteesPayload,
         ratingValue,
         reviewsCount,
@@ -1826,6 +1828,7 @@ export function BundlesPage() {
                       ...formData,
                       variations: variations
                     })
+                    onSubmit(formData, variations)
                   }
                 }}
               >
