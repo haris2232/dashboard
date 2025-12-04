@@ -308,29 +308,56 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   }
 
   const addColor = (imageUrl?: string) => {
-    if (newColorName && !colorOptions.find((c) => c.name === newColorName)) {
-        const value = colorInputType === 'image' ? imageUrl : newColorValue;
+    const trimmedColorName = newColorName.trim()
 
-        if (!value) {
-            toast({
-                title: "Error",
-                description: "Could not add color option. Value is missing.",
-                variant: "destructive"
-            });
-            return;
-        }
-        
-        setColorOptions([
-            ...colorOptions,
-            {
-                name: newColorName,
-                type: colorInputType,
-                value: colorInputType === 'hex' ? value : normalizeImagePath(value),
-            },
-        ]);
-        setNewColorName("");
-        setNewColorValue("#000000");
+    if (!trimmedColorName) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a name for the color/pattern.",
+        variant: "destructive",
+      })
+      return
     }
+
+    if (colorOptions.find((c) => c.name === trimmedColorName)) {
+      toast({
+        title: "Validation Error",
+        description: `Color/pattern with name "${trimmedColorName}" already exists.`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    let valueToAdd: string;
+    if (colorInputType === 'image') {
+      if (!imageUrl) {
+        toast({ title: "Error", description: "Pattern image URL is missing.", variant: "destructive" });
+        return;
+      }
+      valueToAdd = normalizeImagePath(imageUrl);
+    } else { // 'hex'
+      valueToAdd = newColorValue;
+    }
+
+    if (!valueToAdd) {
+      toast({
+        title: "Error",
+        description: "Could not add color option. Value is missing.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setColorOptions([
+      ...colorOptions,
+      {
+        name: trimmedColorName,
+        type: colorInputType,
+        value: valueToAdd,
+      },
+    ])
+    setNewColorName("")
+    setNewColorValue("#000000")
   };
 
   const removeColor = (colorName: string) => {
@@ -348,15 +375,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   }
 
   const handleColorImageUpload = async (file: File) => {
-    if (!newColorName.trim()) {
-        toast({
-            title: "Validation Error",
-            description: "Please enter a name for the pattern before uploading an image.",
-            variant: "destructive",
-        });
-        return;
-    }
-
     try {
         setUploadingColorImage(true);
         const uploadedUrls = await productAPI.uploadImages([file]);
@@ -459,18 +477,16 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         discountPercentage: values.discountPercentage ? Number.parseFloat(values.discountPercentage) : undefined,
         reviewRating: values.reviewRating ? Number.parseFloat(values.reviewRating) : undefined,
         sizeOptions,
-        colorOptions: colorOptions.map(color => ({
-          ...color,
-          value: normalizeImagePath(color.value),
-          images: color.images?.map(img => normalizeImagePath(img))
-        })),
+        colorOptions: colorOptions.map(color => {
+          const isHex = color.type === 'hex';
+          return {
+            ...color,
+            value: isHex ? color.value : normalizeImagePath(color.value),
+            images: color.images?.map(img => normalizeImagePath(img))
+          };
+        }),
         variants: variants.map(variant => ({
           ...variant,
-          color: {
-            ...variant.color,
-            value: normalizeImagePath(variant.color.value),
-            images: variant.color.images?.map(img => normalizeImagePath(img))
-          }
         })),
         defaultVariant: defaultVariant || (variants.length > 0 ? variants[0].id : ""),
         images: images.map(img => normalizeImagePath(img)),
