@@ -689,6 +689,12 @@ export const orderAPI = {
           trackingNumber: order.trackingNumber,
           carrier: order.shippingMethod,
           createdAt: order.createdAt,
+          // Aramex fields
+          aramexSOId: order.aramexSOId,
+          aramexASNId: order.aramexASNId,
+          aramexStatus: order.aramexStatus,
+          aramexTrackingNumber: order.aramexTrackingNumber,
+          aramexLastSync: order.aramexLastSync,
         }));
       }
       return [];
